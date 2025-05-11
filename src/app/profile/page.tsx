@@ -27,8 +27,9 @@ async function getUserBookings(userId: string): Promise<Booking[]> {
         id: doc.id, 
         ...data,
         bookingDate: data.bookingDate as Timestamp, 
-        eventDate: data.eventDate, // This should be event's date string
-        eventTime: data.eventTime, // Added eventTime
+        eventDate: data.eventDate, 
+        eventTime: data.eventTime, 
+        qrCodeData: data.qrCodeData || `EVENT_ID:${data.eventId};USER_ID:${data.userId};BOOKING_ID:${doc.id}`, // Fallback if not set
       } as Booking;
     });
   } catch (error) {
@@ -151,7 +152,8 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <div className="flex flex-col items-center md:items-end">
-                       <QRCodeDisplay data={booking.qrCodeData} eventTitle={booking.eventTitle} />
+                       {/* Pass booking.id for QR representation, and booking.qrCodeData for full raw string display */}
+                       <QRCodeDisplay data={booking.id} eventTitle={booking.eventTitle} fullQrDataString={booking.qrCodeData} />
                     </div>
                   </CardContent>
                   <CardFooter className="pt-4 mt-4 border-t">
@@ -170,4 +172,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-

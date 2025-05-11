@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -11,64 +12,34 @@ import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import type { Booking } from '@/types';
 
-// QR Data Format: EVENT_ID:event_id_val;USER_ID:user_id_val;BOOKING_ID:booking_id_val
-// Example: "EVENT_ID:eventXYZ;USER_ID:userABC;BOOKING_ID:booking123"
-const parseQRData = (data: string): { bookingId: string | null, eventId: string | null, userId: string | null } => {
-  const parts = data.split(';');
-  let bookingId: string | null = null;
-  let eventId: string | null = null;
-  let userId: string | null = null;
-
-  parts.forEach(part => {
-    const [key, value] = part.split(':');
-    if (key === 'BOOKING_ID') bookingId = value;
-    if (key === 'EVENT_ID') eventId = value;
-    if (key === 'USER_ID') userId = value;
-  });
-  
-  return { bookingId, eventId, userId };
-};
-
-
 export function QRScannerClient() {
   const { toast } = useToast();
-  const [qrData, setQrData] = useState('');
+  const [ticketIdInput, setTicketIdInput] = useState(''); // Changed state name for clarity
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationResult, setVerificationResult] = useState<{ status: 'success' | 'error' | 'info'; message: string; booking?: Booking } | null>(null);
 
   const handleVerify = async () => {
-    if (!qrData.trim()) {
-      toast({ variant: 'destructive', title: 'Error', description: 'QR Code data cannot be empty.' });
+    const bookingId = ticketIdInput.trim(); // Use the direct input as bookingId
+    if (!bookingId) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Ticket ID cannot be empty.' });
       return;
     }
     setIsVerifying(true);
     setVerificationResult(null);
-
-    const { bookingId } = parseQRData(qrData);
-
-    if (!bookingId) {
-      setVerificationResult({ status: 'error', message: 'Invalid QR Code format. Booking ID not found.' });
-      toast({ variant: 'destructive', title: 'Verification Failed', description: 'Invalid QR Code format.' });
-      setIsVerifying(false);
-      return;
-    }
 
     try {
       const bookingDocRef = doc(db, 'bookings', bookingId);
       const bookingDocSnap = await getDoc(bookingDocRef);
 
       if (!bookingDocSnap.exists()) {
-        setVerificationResult({ status: 'error', message: 'Booking not found. Invalid ticket.' });
-        toast({ variant: 'destructive', title: 'Verification Failed', description: 'Booking not found.' });
+        setVerificationResult({ status: 'error', message: 'Booking not found. Invalid ticket ID.' });
+        toast({ variant: 'destructive', title: 'Verification Failed', description: 'Booking not found for this Ticket ID.' });
         setIsVerifying(false);
         return;
       }
 
       const bookingData = { id: bookingDocSnap.id, ...bookingDocSnap.data() } as Booking;
       
-      // Ensure bookingDate is handled as Timestamp if needed for display, though not directly used here.
-      // bookingData.bookingDate will be a Firestore Timestamp.
-
       if (bookingData.verified) {
         setVerificationResult({ status: 'info', message: 'Ticket Already Verified/Used.', booking: bookingData });
         toast({ title: 'Info', description: 'This ticket has already been used.' });
@@ -78,7 +49,7 @@ export function QRScannerClient() {
         setVerificationResult({ status: 'success', message: 'Ticket Verified Successfully!', booking: updatedBookingData });
         toast({ title: 'Success', description: 'Ticket is valid and has been marked as verified.' });
       }
-      setQrData(''); // Clear input after verification attempt
+      setTicketIdInput(''); // Clear input after verification attempt
     } catch (error) {
       console.error('Verification failed:', error);
       setVerificationResult({ status: 'error', message: 'An unexpected error occurred during verification.' });
@@ -91,20 +62,18 @@ export function QRScannerClient() {
   return (
     <div className="space-y-6">
       <div>
-        <Label htmlFor="qrData">QR Code Data</Label>
+        <Label htmlFor="ticketIdInput">Ticket ID</Label>
         <Input
-          id="qrData"
-          value={qrData}
-          onChange={(e) => setQrData(e.target.value)}
-          placeholder="Paste QR data here or use scanner"
+          id="ticketIdInput"
+          value={ticketIdInput}
+          onChange={(e) => setTicketIdInput(e.target.value)}
+          placeholder="Enter Ticket ID from QR code or booking"
           disabled={isVerifying}
         />
-        <p className="text-xs text-muted-foreground mt-1">Demo QR Data Format: EVENT_ID:id;USER_ID:id;BOOKING_ID:id</p>
-        <p className="text-xs text-muted-foreground mt-1">Example: EVENT_ID:someEvent123;USER_ID:userABC;BOOKING_ID:your_actual_booking_id_from_firestore</p>
-
+        <p className="text-xs text-muted-foreground mt-1">Enter the Ticket ID (Booking ID) that is represented by the QR code.</p>
       </div>
       
-      <Button onClick={handleVerify} className="w-full bg-primary hover:bg-primary/90 text-lg py-3" disabled={isVerifying || !qrData.trim()}>
+      <Button onClick={handleVerify} className="w-full bg-primary hover:bg-primary/90 text-lg py-3" disabled={isVerifying || !ticketIdInput.trim()}>
         {isVerifying ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <TicketCheck className="mr-2 h-5 w-5" />}
         {isVerifying ? 'Verifying...' : 'Verify Ticket'}
       </Button>
@@ -135,7 +104,7 @@ export function QRScannerClient() {
             }`}>{verificationResult.message}</p>
             {verificationResult.booking && (
               <div className="mt-2 text-sm">
-                <p><strong>Booking ID:</strong> {verificationResult.booking.id}</p>
+                <p><strong>Ticket ID:</strong> {verificationResult.booking.id}</p>
                 <p><strong>Event:</strong> {verificationResult.booking.eventTitle || verificationResult.booking.eventId}</p>
                 <p><strong>User ID:</strong> {verificationResult.booking.userId}</p>
                 <p><strong>Status:</strong> {verificationResult.booking.verified ? "Verified & Checked In" : "Pending Verification"}</p>
@@ -146,6 +115,7 @@ export function QRScannerClient() {
                     : new Date(verificationResult.booking.bookingDate).toLocaleDateString('en-IN')
                   }</p>
                 }
+                 <p className="text-xs mt-1">Raw QR Data Stored: {verificationResult.booking.qrCodeData}</p>
               </div>
             )}
           </CardContent>

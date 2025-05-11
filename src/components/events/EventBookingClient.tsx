@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { Ticket, CreditCard, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { QRCodeDisplay } from './QRCodeDisplay';
 import { useToast } from '@/hooks/use-toast';
-import { collection, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore'; // Added doc
 import { db } from '@/lib/firebase/config';
 
 interface EventBookingClientProps {
@@ -22,6 +22,8 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
   const { toast } = useToast();
   const [bookingState, setBookingState] = useState<'idle' | 'processing' | 'booked' | 'error'>('idle');
   const [bookedDetails, setBookedDetails] = useState<Booking | null>(null);
+  const [generatedBookingId, setGeneratedBookingId] = useState<string | null>(null);
+
 
   const handleBookNow = async () => {
     if (authLoading) return;
@@ -39,38 +41,41 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
       // Payment successful (mock)
       const paymentId = `mock_payment_${Date.now()}`;
 
-      const bookingData: Omit<Booking, 'id' | 'bookingDate' | 'qrCodeData'> = {
+      const bookingDataForFirestore: Omit<Booking, 'id' | 'bookingDate' | 'qrCodeData'> & { qrCodeData?: string } = {
         userId: user.uid,
         eventId: event.id,
         eventTitle: event.title,
         eventDate: event.date,
-        eventTime: event.time, // Added event time
+        eventTime: event.time,
         paymentStatus: 'completed',
         paymentId: paymentId,
         verified: false,
         paymentCurrency: 'INR',
+        // qrCodeData will be added after doc creation
       };
       
       const docRef = await addDoc(collection(db, 'bookings'), {
-        ...bookingData,
+        ...bookingDataForFirestore,
         bookingDate: serverTimestamp(), 
       });
 
-      const qrCodeData = `EVENT_ID:${event.id};USER_ID:${user.uid};BOOKING_ID:${docRef.id}`;
+      // This is the composite string for Firestore, good for backend reference
+      const compositeQrCodeDataString = `EVENT_ID:${event.id};USER_ID:${user.uid};BOOKING_ID:${docRef.id}`;
       
-      // Update the booking document with the generated QR code data
-      await updateDoc(docRef, { 
-        qrCodeData: qrCodeData 
+      await updateDoc(doc(db, 'bookings', docRef.id), { 
+        qrCodeData: compositeQrCodeDataString 
       });
       
+      // For display and QR generation, we use the simple booking ID
       const newBookingForDisplay: Booking = {
-        ...bookingData,
+        ...bookingDataForFirestore,
         id: docRef.id,
-        qrCodeData: qrCodeData,
-        bookingDate: new Date() as any, // This is a placeholder for display; actual is serverTimestamp
+        qrCodeData: compositeQrCodeDataString, // Store the full string in the state for completeness if needed elsewhere
+        bookingDate: new Date() as any, 
       };
 
       setBookedDetails(newBookingForDisplay);
+      setGeneratedBookingId(docRef.id); // Set the simple booking ID for QR display
       setBookingState('booked');
       toast({
         title: "Booking Confirmed!",
@@ -91,13 +96,14 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
     }
   };
 
-  if (bookingState === 'booked' && bookedDetails) {
+  if (bookingState === 'booked' && bookedDetails && generatedBookingId) {
     return (
       <div className="mt-8 p-6 bg-green-50 border border-green-200 rounded-lg shadow-md text-center">
         <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
         <h3 className="text-2xl font-semibold text-green-700 mb-2">Booking Confirmed!</h3>
         <p className="text-green-600 mb-4">Your ticket for <strong>{event.title}</strong> is ready. Amount paid: ₹{event.offerAmount || event.amount}</p>
-        <QRCodeDisplay data={bookedDetails.qrCodeData} eventTitle={event.title} />
+        {/* Pass only the booking ID (generatedBookingId) for QR code generation */}
+        <QRCodeDisplay data={generatedBookingId} eventTitle={event.title} fullQrDataString={bookedDetails.qrCodeData} />
         <Button onClick={() => router.push('/profile')} className="mt-6 bg-green-600 hover:bg-green-700">
           View My Bookings
         </Button>
@@ -139,4 +145,3 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
     </div>
   );
 }
-
