@@ -38,19 +38,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
 
   const performSignOut = useCallback(async () => {
-    setLoading(true); // Ensure loading state covers sign out process
+    setLoading(true); 
     try {
       await firebaseSignOut(auth);
       // setUser, setIsAdmin will be updated by onAuthStateChanged to null/false.
       toast({ title: "Signed Out", description: "You have been successfully signed out." });
-      // Redirection after sign-out is handled by onAuthStateChanged's effect on `user` state.
-      // Specifically, if on a protected page, it will redirect.
     } catch (error) {
       console.error("Sign out error:", error);
       toast({ variant: "destructive", title: "Sign Out Failed", description: "Could not sign out." });
     } finally {
       // onAuthStateChanged will eventually set loading to false after processing null user.
-      // No need to setLoading(false) here directly as onAuthStateChanged is the source of truth for auth state.
     }
   }, [toast]);
 
@@ -61,44 +58,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         if (firebaseUser) {
           let userIsAdmin = false;
+          
           // Check if the logged-in user's email matches the designated admin email
           if (firebaseUser.email && firebaseUser.email.toLowerCase() === siteConfig.adminEmail.toLowerCase()) {
+            // User with the siteConfig.adminEmail is always an admin.
+            userIsAdmin = true;
+            // Optional: You can still check Firestore for this UID for consistency or logging,
+            // but their admin status is already granted.
             try {
-              // Attempt to verify against Firestore 'admins' collection
               const adminDocRef = doc(db, 'admins', firebaseUser.uid);
               const adminDocSnap = await getDoc(adminDocRef);
-              if (adminDocSnap.exists()) {
-                userIsAdmin = true;
-              } else {
-                // Email matches adminEmail, but UID not in 'admins' collection (when online)
-                userIsAdmin = false; 
-                // This scenario will be handled by AdminLoginPage's useEffect to sign out and toast.
-                // No specific toast here, as AdminLoginPage is more context-aware for admin login attempts.
+              if (!adminDocSnap.exists()) {
+                console.warn(`Admin user ${firebaseUser.email} (UID: ${firebaseUser.uid}) is not in the 'admins' Firestore collection. Access granted based on siteConfig.adminEmail.`);
+                // Consider adding this UID to 'admins' collection automatically if this is the first time,
+                // or instructing the admin to do so manually. For now, simply granting access is sufficient.
               }
             } catch (error) {
-              // Firestore check failed (e.g., offline)
-              console.error("Failed to check admin status from Firestore (possibly offline):", error);
+              // Firestore check failed (e.g., offline for the primary admin's UID check)
+              console.error("Firestore check for primary admin email UID failed (possibly offline):", error);
+              // No toast needed here as admin access is already granted based on email.
+            }
+          } else {
+            // For any other email, check the 'admins' collection in Firestore.
+            try {
+              const adminDocRef = doc(db, 'admins', firebaseUser.uid);
+              const adminDocSnap = await getDoc(adminDocRef);
+              userIsAdmin = adminDocSnap.exists();
+            } catch (error) {
+              console.error("Failed to check admin status from Firestore for non-primary email (possibly offline):", error);
+              userIsAdmin = false; // Default to non-admin if Firestore check fails for other emails
               toast({
                 title: "Admin Verification Issue",
-                description: "Could not connect to server to verify full admin privileges. Proceeding with email-based admin access.",
+                description: "Could not connect to server to verify admin privileges for this account. Assuming non-admin.",
                 variant: "default", 
                 duration: 7000,
               });
-              userIsAdmin = true; // Fallback: if email is adminEmail and Firestore check fails, treat as admin
-            }
-          } else {
-            // Email does not match adminEmail, definitely not admin through this path.
-            // For other users, check if their UID is in 'admins' (e.g., if other admins could be added manually to Firestore)
-            // For this app, we primarily focus on siteConfig.adminEmail.
-            // If a general user (not siteConfig.adminEmail) logs in, they are not admin by default unless their UID is explicitly in 'admins'.
-            // This maintains possibility of other Firestore-defined admins.
-             try {
-                const adminDocRef = doc(db, 'admins', firebaseUser.uid);
-                const adminDocSnap = await getDoc(adminDocRef);
-                userIsAdmin = adminDocSnap.exists();
-            } catch (error) {
-                console.error("Failed to check admin status for non-primary admin email:", error);
-                userIsAdmin = false; // Default to non-admin if check fails
             }
           }
           
@@ -119,22 +113,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Redirection Logic
           if (userIsAdmin && pathname === '/admin/login') {
             router.push('/admin/dashboard');
-          } else if (userIsAdmin && !pathname.startsWith('/admin') && !pathname.startsWith('/profile') && pathname !== '/') {
-            // Optional: redirect admin to dashboard if they land on a non-admin, non-profile, non-home page
-            // router.push('/admin/dashboard'); 
           } else if (!userIsAdmin && pathname.startsWith('/admin') && pathname !== '/admin/login') {
             toast({ title: "Access Denied", description: "You are not authorized to access this admin page.", variant: "destructive"});
             router.push('/'); 
           }
-          // Note: If !userIsAdmin and on /admin/login (e.g. admin@gmail.com used, but UID not in Firestore 'admins' collection AND online),
-          // AdminLoginPage's useEffect will handle toasting "Access Denied" and signing out.
 
         } else { // No firebaseUser (logged out)
           setUser(null);
           setIsAdmin(false);
           if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
             router.push('/admin/login');
-          } else if (pathname === '/profile') { // or other general protected routes
+          } else if (pathname === '/profile') { 
              router.push('/login?redirect=' + pathname);
           }
         }
@@ -166,6 +155,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, pass);
+      // onAuthStateChanged will handle setting user, isAdmin, and loading states
     } catch (error: any) {
       console.error("Email/Password sign-in failed:", error);
       toast({ variant: "destructive", title: "Login Failed", description: error.message || "Invalid credentials or server error."});
@@ -181,3 +171,4 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
+
