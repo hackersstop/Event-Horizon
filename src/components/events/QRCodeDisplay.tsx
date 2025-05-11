@@ -18,7 +18,7 @@ export function QRCodeDisplay({ data, eventTitle }: QRCodeDisplayProps) {
         aria-label={`QR Code for event: ${eventTitle || 'booking'}`}
         data-ai-hint="qr code"
       >
-        <span className="text-center"> Placeholder QR Code <br /> (Data: {data.substring(0, 20)}...)</span>
+        <span className="text-center"> Placeholder QR Code <br /> (Data: {data ? data.substring(0, 20) : 'N/A'}...)</span>
       </div>
       <p className="mt-3 text-xs text-muted-foreground text-center">
         Present this code at the event entrance.

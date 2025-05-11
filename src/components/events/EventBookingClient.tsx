@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { Ticket, CreditCard, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { QRCodeDisplay } from './QRCodeDisplay';
 import { useToast } from '@/hooks/use-toast';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 
 interface EventBookingClientProps {
@@ -56,20 +56,15 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
 
       const qrCodeData = `EVENT_ID:${event.id};USER_ID:${user.uid};BOOKING_ID:${docRef.id}`;
       
-      // Update the just created booking with QR code data
-      // Normally, you'd update the document, but for client-side display, this is okay before showing QR
-      // For a robust solution, QR data could be part of the initial write or an update.
-      // For now, we'll construct it for display and assume it's on the created document.
-      // It is better to store qrCodeData in Firestore document after generation.
-      // For this demo, we will simulate it.
+      // Update the booking document with the generated QR code data
+      await updateDoc(docRef, { 
+        qrCodeData: qrCodeData 
+      });
       
       const newBookingForDisplay: Booking = {
         ...bookingData,
         id: docRef.id,
         qrCodeData: qrCodeData,
-        // bookingDate will be a server timestamp, for immediate display we might use client's current time
-        // but for consistency, it's better to re-fetch or rely on what's shown in profile page.
-        // For this component, we'll use the generated QR and other details.
         bookingDate: new Date() as any, // This is a placeholder for display; actual is serverTimestamp
       };
 
