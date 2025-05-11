@@ -37,35 +37,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const { toast } = useToast();
 
   const performSignOut = useCallback(async () => {
-    setLoading(true);
     await firebaseSignOut(auth);
-    // setUser and setIsAdmin will be updated by onAuthStateChanged
-    const isAdminPage = pathname.startsWith('/admin');
-    router.push(isAdminPage ? '/admin/login' : '/');
+    // setUser, setIsAdmin, and loading states will be updated by onAuthStateChanged.
+    // Redirection will also be handled by onAuthStateChanged based on the new null user state.
     toast({ title: "Signed Out", description: "You have been successfully signed out." });
-    // setLoading(false) will be handled by onAuthStateChanged setting user to null
-  }, [pathname, router, toast]);
+  }, [toast]);
 
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      setLoading(true);
+      setLoading(true); // Set loading true at the very start of handling state change
       try {
         if (firebaseUser) {
           let userIsAdmin = false;
           try {
             const adminDocRef = doc(db, 'admins', firebaseUser.uid);
-            const adminDocSnap = await getDoc(adminDocRef);
+            const adminDocSnap = await getDoc(adminDocRef); // Await this properly
             userIsAdmin = adminDocSnap.exists();
           } catch (error) {
-            console.error("Failed to check admin status:", error);
+            console.error("Failed to check admin status (possibly offline):", error);
             toast({
               title: "Network Issue",
               description: "Could not verify admin status. Assuming non-admin role.",
               variant: "default", 
               duration: 5000,
             });
-            // userIsAdmin remains false, which is a safe default
+            // userIsAdmin remains false, a safe default.
           }
           
           const appUser: AppUser = {
@@ -91,19 +88,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(appUser);
           setIsAdmin(userIsAdmin);
 
+          // Redirection logic based on confirmed admin status
           if (userIsAdmin && pathname === '/admin/login') {
             router.push('/admin/dashboard');
           } else if (userIsAdmin && !pathname.startsWith('/admin')) {
-            // Optional: redirect admin to dashboard if they land on a non-admin page after login
-            // router.push('/admin/dashboard');
-          } else if (!userIsAdmin && pathname.startsWith('/admin')) {
-            toast({ title: "Access Denied", description: "You are not authorized to access admin pages.", variant: "destructive"});
-            router.push('/'); // Redirect non-admin away from admin pages
+            // Optional: redirect admin to dashboard if they land on a non-admin page
+            // router.push('/admin/dashboard'); 
+          } else if (!userIsAdmin && pathname.startsWith('/admin') && pathname !== '/admin/login') {
+            // Non-admin trying to access a protected admin page (not the login page itself)
+            toast({ title: "Access Denied", description: "You are not authorized to access this admin page.", variant: "destructive"});
+            // Consider signing them out or just redirecting. For now, redirecting.
+            // await performSignOut(); // This would sign them out.
+            router.push('/'); 
           }
+          // If !userIsAdmin and on /admin/login, they attempted admin login.
+          // The AdminLoginPage's useEffect will handle toasting "Access Denied" and signing them out.
 
-        } else {
+        } else { // No firebaseUser (logged out)
           setUser(null);
           setIsAdmin(false);
+          // Redirect if on a protected page and now logged out
           if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
             router.push('/admin/login');
           } else if (pathname === '/profile') {
@@ -114,39 +118,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error("Error in onAuthStateChanged handling:", error);
         setUser(null);
         setIsAdmin(false);
-        // Handle any unexpected error by resetting state.
+        toast({variant: "destructive", title: "Authentication Error", description: "An error occurred during authentication."})
       } finally {
-        setLoading(false);
+        setLoading(false); // Set loading false after all processing (including admin check) is done
       }
     });
 
     return () => unsubscribe();
-  }, [router, pathname, toast]);
+  }, [router, pathname, toast]); // performSignOut removed as it's not called directly within this effect
 
   const signInWithGoogle = async () => {
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-      toast({ title: "Login Successful", description: "Welcome!" });
+      // onAuthStateChanged handles setting user, admin state, and final setLoading(false)
+      // A general "Login successful" toast can be shown by the page they are redirected to, or not at all.
     } catch (error: any) {
       console.error("Google sign-in failed:", error);
       toast({ variant: "destructive", title: "Login Failed", description: error.message || "Could not sign in with Google." });
-      setLoading(false); // Explicitly set loading false on error here, as onAuthStateChanged might not fire quickly
+      setLoading(false); 
     }
-    // onAuthStateChanged will handle setting user, admin state and final setLoading(false)
   };
 
   const signInWithEmail = async (email: string, pass: string) => {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-      // onAuthStateChanged will handle user and admin state update and final setLoading(false)
+      // onAuthStateChanged will handle user, admin state update, and final setLoading(false)
     } catch (error: any) {
       console.error("Email/Password sign-in failed:", error);
       toast({ variant: "destructive", title: "Login Failed", description: error.message || "Invalid credentials or server error."});
-      setLoading(false); // Explicitly set loading false on error here
-      throw error;
+      setLoading(false); 
+      throw error; // Re-throw to allow AdminLoginPage to know about the failure
     }
   };
 
@@ -157,3 +161,4 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
+

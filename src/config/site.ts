@@ -1,3 +1,4 @@
+
 export type NavItem = {
   title: string;
   href: string;
@@ -52,3 +53,4 @@ export const siteConfig: SiteConfig = {
     },
   ],
 };
+

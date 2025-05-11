@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -5,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,6 +14,7 @@ import * as z from 'zod';
 import { LogIn, ShieldAlert, Home } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { Spinner } from '@/components/ui/spinner';
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -22,54 +24,85 @@ const loginSchema = z.object({
 type LoginFormInputs = z.infer<typeof loginSchema>;
 
 export default function AdminLoginPage() {
-  const { isAdmin, signInWithEmail, loading, user } = useAuth();
+  const { isAdmin, signInWithEmail, loading, user, signOut } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const pathname = usePathname();
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormInputs>({
     resolver: zodResolver(loginSchema),
   });
 
   useEffect(() => {
-    if (user && isAdmin && !loading) {
-      router.push('/admin/dashboard');
-    } else if (user && !isAdmin && !loading) {
-      // Non-admin user trying to access admin login, redirect them away.
-      toast({ title: "Access Denied", description: "You are not authorized to access this page.", variant: "destructive"});
-      router.push('/');
+    if (!loading) { // Only proceed if AuthContext is not loading
+      if (user) { // User is logged in
+        if (isAdmin) {
+          // If admin is logged in (possibly from a previous session or just now)
+          // and is on the admin login page, redirect to dashboard.
+          // This is largely handled by AuthContext, but this is a safeguard.
+          if (pathname === '/admin/login') {
+            router.push('/admin/dashboard');
+          }
+        } else {
+          // User is logged in, but IS NOT ADMIN.
+          // This means they used the admin login form but are not an admin.
+          // Or a non-admin user navigated directly to /admin/login.
+          if (pathname === '/admin/login') { // Action specific to admin login page
+            toast({
+              title: "Access Denied",
+              description: "You are not authorized to access the admin panel. Please log in with admin credentials.",
+              variant: "destructive"
+            });
+            // Sign out the user to prevent session confusion.
+            // signOut will trigger onAuthStateChanged, which will keep them on /admin/login (now as a logged-out user).
+            signOut().catch(err => console.error("Error signing out non-admin from admin login:", err));
+          }
+        }
+      }
+      // If !user && !loading, they are on login page, ready to log in (expected state).
     }
-  }, [user, isAdmin, loading, router, toast]);
+  }, [user, isAdmin, loading, router, toast, signOut, pathname]);
 
 
   const onSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
     setIsSubmitting(true);
     try {
       await signInWithEmail(data.email, data.password);
-      // AuthContext will handle redirection on successful login
-      toast({ title: "Login Successful", description: "Redirecting to dashboard..." });
+      // If login is successful & user is admin, AuthContext will redirect.
+      // If login is successful & user is NOT admin, the useEffect above will toast "Access Denied" and sign out.
+      // If login fails (e.g. wrong password), signInWithEmail in AuthContext will toast "Login Failed".
+      // No "Login Successful" toast here to avoid premature/misleading messages.
     } catch (error: any) {
-      console.error("Admin login failed:", error);
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: error.message || "Invalid credentials or server error. Please try again.",
-      });
+      // This catch is for errors re-thrown by signInWithEmail (e.g. auth failures handled there)
+      // or other unexpected errors during the submission process.
+      // The toast for auth failure is already in AuthContext's signInWithEmail.
+      console.error("Admin login form submission error:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (loading) {
+  if (loading || (user && isAdmin)) { // Show spinner if auth is loading OR if user is admin (implies redirect is imminent)
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
-        <LogIn className="h-8 w-8 animate-pulse text-primary" />
+        <Spinner className="h-10 w-10 text-primary" />
+      </div>
+    );
+  }
+  
+  // If user is logged in but NOT admin, the useEffect will handle toast and sign-out.
+  // During that brief period, we might still render the form or a spinner. A spinner is better.
+  if (user && !isAdmin && !loading && pathname === '/admin/login') {
+     return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
+        <Spinner className="h-10 w-10 text-primary" />
       </div>
     );
   }
 
-  if (user && isAdmin) return null; // Already logged in as admin and redirecting
 
+  // Render login form if no user, or if user is not admin and useEffect hasn't kicked in fully (though spinner above should catch most)
   return (
     <div className="flex justify-center items-center min-h-[calc(100vh-200px)] bg-gradient-to-br from-background to-primary/10 p-4">
       <Card className="w-full max-w-md shadow-2xl">
@@ -77,7 +110,7 @@ export default function AdminLoginPage() {
           <ShieldAlert className="mx-auto h-12 w-12 text-primary mb-2" />
           <CardTitle className="text-3xl font-bold">Admin Portal</CardTitle>
           <CardDescription className="text-md pt-1">
-            Please login to manage EventHorizon.
+            Please login to manage {siteConfig.name}.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -107,7 +140,7 @@ export default function AdminLoginPage() {
               {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
             </div>
             <Button type="submit" className="w-full text-lg py-3 bg-primary hover:bg-primary/90" disabled={isSubmitting}>
-              {isSubmitting ? <LogIn className="mr-2 h-5 w-5 animate-spin" /> : <LogIn className="mr-2 h-5 w-5" />}
+              {isSubmitting ? <Spinner className="mr-2 h-5 w-5" /> : <LogIn className="mr-2 h-5 w-5" />}
               {isSubmitting ? 'Logging In...' : 'Login'}
             </Button>
           </form>
@@ -121,3 +154,4 @@ export default function AdminLoginPage() {
     </div>
   );
 }
+
