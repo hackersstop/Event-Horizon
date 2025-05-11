@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -8,10 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { QRCodeDisplay } from '@/components/events/QRCodeDisplay';
 import { Spinner } from '@/components/ui/spinner';
-import { Ticket, CalendarDays, ShoppingBag } from 'lucide-react';
+import { Ticket, CalendarDays, ShoppingBag, UserCircle } from 'lucide-react';
 import Link from 'next/link';
 import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 async function getUserBookings(userId: string): Promise<Booking[]> {
   try {
@@ -23,8 +25,8 @@ async function getUserBookings(userId: string): Promise<Booking[]> {
       return { 
         id: doc.id, 
         ...data,
-        bookingDate: data.bookingDate as Timestamp, // Already a Timestamp from Firestore
-        eventDate: data.eventDate, // Should be string YYYY-MM-DD
+        bookingDate: data.bookingDate as Timestamp, 
+        eventDate: data.eventDate, 
       } as Booking;
     });
   } catch (error) {
@@ -50,7 +52,6 @@ export default function ProfilePage() {
         })
         .catch(error => {
             console.error("Failed to load bookings: ", error);
-            // Potentially set an error state here to show to the user
         })
         .finally(() => setLoadingBookings(false));
     }
@@ -65,15 +66,38 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    return <p className="text-center">Please log in to view your profile.</p>;
+    // This case should ideally be handled by the redirect in useEffect,
+    // but as a fallback:
+    return (
+        <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
+            <p className="text-xl text-muted-foreground mb-4">Please log in to view your profile.</p>
+            <Button asChild>
+                <Link href="/login?redirect=/profile">Login</Link>
+            </Button>
+        </div>
+    );
   }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <Card className="shadow-lg">
         <CardHeader>
-          <CardTitle className="text-3xl font-bold text-primary">My Profile</CardTitle>
-          <CardDescription>Welcome, {user.displayName || user.email}! Here are your event bookings.</CardDescription>
+          <div className="flex items-center space-x-4">
+            {user.photoURL ? (
+              <Avatar className="h-20 w-20">
+                <AvatarImage src={user.photoURL} alt={user.displayName || 'User Avatar'} />
+                <AvatarFallback className="text-3xl">
+                  {user.displayName ? user.displayName.substring(0, 2).toUpperCase() : user.email?.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            ) : (
+              <UserCircle className="h-20 w-20 text-muted-foreground" />
+            )}
+            <div>
+              <CardTitle className="text-3xl font-bold text-primary">My Profile</CardTitle>
+              <CardDescription>Welcome, {user.displayName || user.email}! Here are your event bookings.</CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {bookings.length === 0 ? (
@@ -101,7 +125,7 @@ export default function ProfilePage() {
                     <div>
                        <p className="text-sm text-muted-foreground flex items-center mb-1">
                         <CalendarDays className="h-4 w-4 mr-2 text-primary" />
-                        Event Date: {booking.eventDate ? new Date(booking.eventDate).toLocaleDateString('en-IN') : 'N/A'}
+                        Event Date: {booking.eventDate ? new Date(booking.eventDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric'}) : 'N/A'}
                       </p>
                       <p className={`text-sm font-medium ${booking.verified ? 'text-green-600' : 'text-amber-600'}`}>
                         Status: {booking.verified ? 'Verified & Checked In' : 'Not Checked In'}

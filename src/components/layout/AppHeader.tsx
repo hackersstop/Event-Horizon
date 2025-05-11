@@ -1,12 +1,14 @@
+
 'use client';
 
 import Link from 'next/link';
 import { siteConfig } from '@/config/site';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
-import { LogIn, LogOut, UserCircle, ShieldCheck, Sun, Moon } from 'lucide-react';
+import { LogIn, LogOut, UserCircle, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function AppHeader() {
   const { user, isAdmin, loading, signOut } = useAuth();
@@ -20,8 +22,8 @@ export function AppHeader() {
   };
 
   const renderAuthButtons = () => {
-    if (loading && !mounted) { // Show placeholder or nothing during initial load to prevent flicker
-      return <div className="w-24 h-8 bg-muted rounded-md animate-pulse"></div>;
+    if (loading && !mounted) { 
+      return <div className="w-32 h-9 bg-muted rounded-md animate-pulse"></div>;
     }
 
     if (user) {
@@ -35,8 +37,18 @@ export function AppHeader() {
             </Link>
           ) : (
             <Link href="/profile" legacyBehavior passHref>
-              <Button variant="ghost" size="sm" className="text-sm">
-                <UserCircle className="mr-2 h-4 w-4" /> Profile
+              <Button variant="ghost" size="sm" className="text-sm flex items-center">
+                {user.photoURL ? (
+                  <Avatar className="mr-2 h-6 w-6">
+                    <AvatarImage src={user.photoURL} alt={user.displayName || 'User Avatar'} />
+                    <AvatarFallback>
+                      {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                ) : (
+                  <UserCircle className="mr-2 h-5 w-5" />
+                )}
+                Profile
               </Button>
             </Link>
           )}
@@ -100,11 +112,6 @@ export function AppHeader() {
         <div className="flex items-center gap-x-2">
           {mounted && renderAuthButtons()}
           {/* Placeholder for theme toggle if needed in future */}
-          {/* <Button variant="ghost" size="icon">
-            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            <span className="sr-only">Toggle theme</span>
-          </Button> */}
         </div>
       </div>
     </header>
