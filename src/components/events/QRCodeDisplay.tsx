@@ -12,82 +12,81 @@ const QrCodePlaceholderIcon = () => (
   <svg
     width="100%"
     height="100%"
-    viewBox="0 0 50 50" // Increased viewbox for more detail
+    viewBox="0 0 50 50"
     xmlns="http://www.w3.org/2000/svg"
     className="text-card-foreground"
     data-ai-hint="qr code graphic"
+    shapeRendering="crispEdges" // Helps make pixels sharp
   >
-    {/* Quiet zone - ensure parent div provides this with padding or use a white rect */}
-    {/* Finder Patterns (Top-Left, Top-Right, Bottom-Left) */}
+    {/* Background for quiet zone (ensure parent provides padding) */}
+    {/* <rect width="100%" height="100%" fill="white"/> */}
+
+    {/* Finder Patterns (Top-Left, Top-Right, Bottom-Left) - typical 7x7 module size */}
     {/* Top-left */}
-    <rect x="4" y="4" width="10" height="10" fill="currentColor"/>
-    <rect x="6" y="6" width="6" height="6" className="fill-card"/>
-    <rect x="7" y="7" width="4" height="4" fill="currentColor"/>
+    <rect x="3" y="3" width="7" height="7" fill="currentColor"/>
+    <rect x="4" y="4" width="5" height="5" className="fill-card"/>
+    <rect x="5" y="5" width="3" height="3" fill="currentColor"/>
 
     {/* Top-right */}
-    <rect x="36" y="4" width="10" height="10" fill="currentColor"/>
-    <rect x="38" y="6" width="6" height="6" className="fill-card"/>
-    <rect x="39" y="7" width="4" height="4" fill="currentColor"/>
+    <rect x="40" y="3" width="7" height="7" fill="currentColor"/>
+    <rect x="41" y="4" width="5" height="5" className="fill-card"/>
+    <rect x="42" y="5" width="3" height="3" fill="currentColor"/>
 
     {/* Bottom-left */}
-    <rect x="4" y="36" width="10" height="10" fill="currentColor"/>
-    <rect x="6" y="38" width="6" height="6" className="fill-card"/>
-    <rect x="7" y="39" width="4" height="4" fill="currentColor"/>
+    <rect x="3" y="40" width="7" height="7" fill="currentColor"/>
+    <rect x="4" y="41" width="5" height="5" className="fill-card"/>
+    <rect x="5" y="42" width="3" height="3" fill="currentColor"/>
 
-    {/* Alignment Pattern (example) */}
-    <rect x="32" y="32" width="7" height="7" fill="currentColor"/>
-    <rect x="33.5" y="33.5" width="4" height="4" className="fill-card"/>
-    <rect x="34.5" y="34.5" width="2" height="2" fill="currentColor"/>
+    {/* Alignment Pattern (example, a 5x5 module pattern if space allows, often smaller) */}
+    {/* This is a simplified alignment pattern example for a small QR code */}
+    <rect x="35" y="35" width="5" height="5" fill="currentColor"/>
+    <rect x="36" y="36" width="3" height="3" className="fill-card"/>
+    <rect x="37" y="37" width="1" height="1" fill="currentColor"/>
 
-    {/* Timing Patterns (simplified) */}
-    {[...Array(7)].map((_, i) => (
-      <React.Fragment key={`timing-h-${i}`}>
-        <rect x={16 + i * 2} y="10" width="1.5" height="1.5" fill="currentColor" />
-        { i % 2 === 0 && <rect x={17 + i * 2} y="10" width="1.5" height="1.5" className="fill-card" />}
-      </React.Fragment>
+    {/* Timing Patterns (Horizontal and Vertical - alternating modules) */}
+    {/* Horizontal */}
+    {[...Array(28)].map((_, i) => (
+      i % 2 === 0 && <rect key={`th-${i}`} x={10 + i * 1} y="8" width="1" height="1" fill="currentColor"/>
     ))}
-     {[...Array(7)].map((_, i) => (
-      <React.Fragment key={`timing-v-${i}`}>
-        <rect x="10" y={16 + i * 2} width="1.5" height="1.5" fill="currentColor" />
-         { i % 2 === 0 && <rect x="10" y={17 + i * 2} width="1.5" height="1.5" className="fill-card" />}
-      </React.Fragment>
+    {/* Vertical */}
+    {[...Array(28)].map((_, i) => (
+      i % 2 === 0 && <rect key={`tv-${i}`} x="8" y={10 + i * 1} width="1" height="1" fill="currentColor"/>
     ))}
 
+    {/* Data Modules (many small squares representing data) */}
+    {/* This needs to be dense and somewhat random-looking. */}
+    {Array.from({ length: 25 }).flatMap((_, r) => 
+      Array.from({ length: 25 }).map((_, c) => {
+        const x = 11 + c * 1.1; // Adjusted for denser packing
+        const y = 11 + r * 1.1; // Adjusted for denser packing
+        // Avoid drawing over finder/alignment patterns (rough check)
+        if ( (x > 2 && x < 10 && y > 2 && y < 10) || 
+             (x > 39 && x < 47 && y > 2 && y < 10) ||
+             (x > 2 && x < 10 && y > 39 && y < 47) ||
+             (x > 34 && x < 40 && y > 34 && y < 40) ) {
+          return null;
+        }
+        // Avoid drawing over timing patterns
+        if ( (y >= 7.5 && y < 9.5 && x >=9.5 && x < 38.5) || (x >=7.5 && x < 9.5 && y >=9.5 && y < 38.5)) {
+            return null;
+        }
 
-    {/* Simplified Data Modules (denser and more varied pattern) */}
-    {/* Using a more structured approach for "random" blocks */}
-    {
-      [
-        // Block 1
-        [16,4,2,2], [18,4,2,2], [20,4,2,2], [22,4,2,2], [24,4,2,2], [26,4,2,2], [28,4,2,2], [30,4,2,2], [32,4,2,2],
-        [16,6,2,2], [20,6,2,2], [24,6,2,2], [28,6,2,2], [32,6,2,2],
-        [16,8,2,2], [18,8,2,2], [22,8,2,2], [26,8,2,2], [30,8,2,2], 
-        // Block 2 (Vertical)
-        [4,16,2,2], [4,18,2,2], [4,20,2,2], [4,22,2,2], [4,24,2,2], [4,26,2,2], [4,28,2,2], [4,30,2,2], [4,32,2,2],
-        [6,16,2,2], [6,20,2,2], [6,24,2,2], [6,28,2,2], [6,32,2,2],
-        [8,16,2,2], [8,18,2,2], [8,22,2,2], [8,26,2,2], [8,30,2,2],
-        // Central Data Area
-        [16,16,2,2], [18,16,2,2], [20,16,2,2], [22,16,2,2], [24,16,2,2], [26,16,2,2], [28,16,2,2], [30,16,2,2], [32,16,2,2], [34,16,2,2], [36,16,2,2],
-        [16,18,2,2],                                           [26,18,2,2], [28,18,2,2],                                           [36,18,2,2],
-        [16,20,2,2], [18,20,2,2], [20,20,2,2],                  [26,20,2,2],                  [30,20,2,2], [32,20,2,2], [34,20,2,2], [36,20,2,2],
-        [16,22,2,2], [18,22,2,2],                               [28,22,2,2], [30,22,2,2],                                           [36,22,2,2],
-        [16,24,2,2], [18,24,2,2], [20,24,2,2], [22,24,2,2], [24,24,2,2], [26,24,2,2], [28,24,2,2], [30,24,2,2], [32,24,2,2], [34,24,2,2], [36,24,2,2],
-        [16,26,2,2],                                           [24,26,2,2],                                                       [34,26,2,2], [36,26,2,2],
-        [16,28,2,2], [18,28,2,2], [20,28,2,2], [22,28,2,2],                  [28,28,2,2], [30,28,2,2], [32,28,2,2], [34,28,2,2], [36,28,2,2],
-        [16,30,2,2], [18,30,2,2],                                           [26,30,2,2],                                           [34,30,2,2], [36,30,2,2],
-        [16,32,2,2], [18,32,2,2], [20,32,2,2], [22,32,2,2], [24,32,2,2],                                           [32,32,2,2], [34,32,2,2], [36,32,2,2],
-        [16,34,2,2],                                                                                           [30,34,2,2], [32,34,2,2], [34,34,2,2], [36,34,2,2],
-        [16,36,2,2], [18,36,2,2], [20,36,2,2], [22,36,2,2], [24,36,2,2], [26,36,2,2], [28,36,2,2], [30,36,2,2], [32,36,2,2], [34,36,2,2], [36,36,2,2],
-        // Some more varied blocks
-        [20,30,4,2], [26,26,2,4], [22,18,4,2] 
-      ].map(([x, y, w, h], i) => {
-        // Alternate fill for a more "random" look
-        const fillClass = i % 3 === 0 ? "fill-card" : "currentColor";
-        return (
-          <rect key={`data-${i}`} x={x as number} y={y as number} width={w as number} height={h as number} fill={fillClass} />
-        )
+        if (Math.random() > 0.45) { // % of black modules
+          return <rect key={`d-${r}-${c}`} x={x} y={y} width="1" height="1" fill="currentColor"/>;
+        }
+        return null;
       })
-    }
+    )}
+    
+    {/* A few slightly larger, more structured "data" blocks to vary pattern */}
+    <rect x="13" y="20" width="4" height="2" fill="currentColor" />
+    <rect x="20" y="15" width="2" height="5" fill="currentColor" />
+    <rect x="25" y="28" width="6" height="3" fill="currentColor" />
+    <rect x="15" y="35" width="3" height="3" fill="currentColor" />
+    <rect x="30" y="12" width="2" height="4" fill="currentColor" />
+    <rect x="22" y="22" width="3" height="3" className="fill-card" /> 
+    <rect x="23" y="23" width="1" height="1" fill="currentColor" />
+
   </svg>
 );
 
@@ -120,9 +119,12 @@ export function QRCodeDisplay({ data: bookingId, eventTitle, fullQrDataString }:
           </div>
         )}
       </div>
-      {/* Note: This is a placeholder. In a real application, use a QR code generation library. */}
-
-      {/* The direct display of Ticket ID under QR code is removed from here as it's now in the main card details */}
+      
+      {bookingId && (
+        <p className="mt-3 text-md font-mono text-center text-primary bg-primary/10 px-3 py-1 rounded-md">
+          Ticket ID: <span className="font-bold">{bookingId}</span>
+        </p>
+      )}
       
       {fullQrDataString && formattedFullQrParts.length > 0 && (
         <div className="mt-3 text-xs text-muted-foreground text-left bg-muted/50 p-2 rounded-md w-full">
@@ -137,7 +139,7 @@ export function QRCodeDisplay({ data: bookingId, eventTitle, fullQrDataString }:
       
       <p className="mt-4 text-xs text-muted-foreground text-center">
         Present this QR placeholder or provide the Ticket ID to an admin at the event entrance for verification.
-        In a real app, this would be a scannable QR code.
+        In a real app, this would be a scannable QR code generated by a library.
       </p>
     </div>
   );

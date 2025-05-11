@@ -9,12 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { QRCodeDisplay } from '@/components/events/QRCodeDisplay';
 import { Spinner } from '@/components/ui/spinner';
-import { Ticket, CalendarDays, ShoppingBag, UserCircle, Info, Clock } from 'lucide-react';
+import { Ticket, CalendarDays, ShoppingBag, UserCircle, Info, Clock, Hash } from 'lucide-react';
 import Link from 'next/link';
 import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Separator } from '@/components/ui/separator';
 
 async function getUserBookings(userId: string): Promise<Booking[]> {
   try {
@@ -29,7 +28,7 @@ async function getUserBookings(userId: string): Promise<Booking[]> {
         bookingDate: data.bookingDate as Timestamp, 
         eventDate: data.eventDate, 
         eventTime: data.eventTime, 
-        qrCodeData: data.qrCodeData || `EVENT_ID:${data.eventId};USER_ID:${data.userId};BOOKING_ID:${doc.id}`, // Fallback if not set
+        qrCodeData: data.qrCodeData || `EVENT_ID:${data.eventId};USER_ID:${data.userId};BOOKING_ID:${doc.id}`,
       } as Booking;
     });
   } catch (error) {
@@ -124,23 +123,23 @@ export default function ProfilePage() {
                   </CardHeader>
                   <CardContent className="grid md:grid-cols-2 gap-6 items-start">
                     <div className="space-y-3">
+                       <div>
+                        <h4 className="text-sm font-medium text-muted-foreground flex items-center"><Hash className="h-4 w-4 mr-1"/>Ticket ID</h4>
+                        <p className="text-md font-semibold text-primary break-all">{booking.id}</p>
+                      </div>
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground">Event Details</h4>
                         <p className="text-md font-semibold">{booking.eventTitle || 'N/A'}</p>
                       </div>
-                       <div>
-                        <h4 className="text-sm font-medium text-muted-foreground">Ticket ID</h4>
-                        <p className="text-md font-semibold text-primary">{booking.id}</p>
-                      </div>
                       <div className="flex items-center space-x-2">
-                        <CalendarDays className="h-5 w-5 text-primary" />
+                        <CalendarDays className="h-5 w-5 text-muted-foreground" />
                         <p className="text-sm">
                           Event Date: {booking.eventDate ? new Date(booking.eventDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric'}) : 'N/A'}
                         </p>
                       </div>
                        {booking.eventTime && (
                         <div className="flex items-center space-x-2">
-                          <Clock className="h-5 w-5 text-primary" />
+                          <Clock className="h-5 w-5 text-muted-foreground" />
                           <p className="text-sm">Event Time: {booking.eventTime}</p>
                         </div>
                       )}
@@ -152,7 +151,6 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <div className="flex flex-col items-center md:items-end">
-                       {/* Pass booking.id for QR representation, and booking.qrCodeData for full raw string display */}
                        <QRCodeDisplay data={booking.id} eventTitle={booking.eventTitle} fullQrDataString={booking.qrCodeData} />
                     </div>
                   </CardContent>
