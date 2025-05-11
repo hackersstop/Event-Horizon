@@ -1,4 +1,6 @@
 
+import React from 'react'; // Added React import for JSX
+
 interface QRCodeDisplayProps {
   data: string; // This should now be the simple Booking ID for QR representation
   eventTitle?: string;
@@ -120,12 +122,7 @@ export function QRCodeDisplay({ data: bookingId, eventTitle, fullQrDataString }:
       </div>
       {/* Note: This is a placeholder. In a real application, use a QR code generation library. */}
 
-
-      {bookingId && (
-        <p className="mt-4 text-md font-semibold text-center">
-          Ticket ID: <span className="font-bold text-primary select-all">{bookingId}</span>
-        </p>
-      )}
+      {/* The direct display of Ticket ID under QR code is removed from here as it's now in the main card details */}
       
       {fullQrDataString && formattedFullQrParts.length > 0 && (
         <div className="mt-3 text-xs text-muted-foreground text-left bg-muted/50 p-2 rounded-md w-full">
@@ -145,3 +142,4 @@ export function QRCodeDisplay({ data: bookingId, eventTitle, fullQrDataString }:
     </div>
   );
 }
+
