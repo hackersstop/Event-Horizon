@@ -5,15 +5,16 @@ import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { Booking } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { QRCodeDisplay } from '@/components/events/QRCodeDisplay';
 import { Spinner } from '@/components/ui/spinner';
-import { Ticket, CalendarDays, ShoppingBag, UserCircle } from 'lucide-react';
+import { Ticket, CalendarDays, ShoppingBag, UserCircle, Info, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from '@/components/ui/separator';
 
 async function getUserBookings(userId: string): Promise<Booking[]> {
   try {
@@ -26,7 +27,8 @@ async function getUserBookings(userId: string): Promise<Booking[]> {
         id: doc.id, 
         ...data,
         bookingDate: data.bookingDate as Timestamp, 
-        eventDate: data.eventDate, 
+        eventDate: data.eventDate, // This should be event's date string
+        eventTime: data.eventTime, // Added eventTime
       } as Booking;
     });
   } catch (error) {
@@ -66,8 +68,6 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    // This case should ideally be handled by the redirect in useEffect,
-    // but as a fallback:
     return (
         <div className="flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
             <p className="text-xl text-muted-foreground mb-4">Please log in to view your profile.</p>
@@ -111,33 +111,56 @@ export default function ProfilePage() {
           ) : (
             <div className="space-y-6">
               {bookings.map((booking) => (
-                <Card key={booking.id} className="overflow-hidden transition-shadow hover:shadow-md">
-                  <CardHeader>
+                <Card key={booking.id} className="overflow-hidden transition-shadow hover:shadow-md bg-card/50">
+                  <CardHeader className="pb-4">
                     <CardTitle className="text-xl font-semibold text-secondary flex items-center">
                       <Ticket className="h-6 w-6 mr-2" />
-                      {booking.eventTitle || `Event ID: ${booking.eventId}`}
+                      {booking.eventTitle || `Event Booking`}
                     </CardTitle>
                     <CardDescription>
-                      Booked on: {booking.bookingDate instanceof Timestamp ? booking.bookingDate.toDate().toLocaleDateString('en-IN') : new Date(booking.bookingDate).toLocaleDateString('en-IN')}
+                      Booked on: {booking.bookingDate instanceof Timestamp ? booking.bookingDate.toDate().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }) : new Date(booking.bookingDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="grid md:grid-cols-2 gap-4 items-center">
-                    <div>
-                       <p className="text-sm text-muted-foreground flex items-center mb-1">
-                        <CalendarDays className="h-4 w-4 mr-2 text-primary" />
-                        Event Date: {booking.eventDate ? new Date(booking.eventDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric'}) : 'N/A'}
-                      </p>
-                      <p className={`text-sm font-medium ${booking.verified ? 'text-green-600' : 'text-amber-600'}`}>
-                        Status: {booking.verified ? 'Verified & Checked In' : 'Not Checked In'}
-                      </p>
-                       <Button variant="outline" size="sm" className="mt-2" asChild>
-                        <Link href={`/events/${booking.eventId}`}>View Event Details</Link>
-                      </Button>
+                  <CardContent className="grid md:grid-cols-2 gap-6 items-start">
+                    <div className="space-y-3">
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground">Event Details</h4>
+                        <p className="text-md font-semibold">{booking.eventTitle || 'N/A'}</p>
+                      </div>
+                       <div>
+                        <h4 className="text-sm font-medium text-muted-foreground">Ticket ID</h4>
+                        <p className="text-md font-semibold text-primary">{booking.id}</p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <CalendarDays className="h-5 w-5 text-primary" />
+                        <p className="text-sm">
+                          Event Date: {booking.eventDate ? new Date(booking.eventDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric'}) : 'N/A'}
+                        </p>
+                      </div>
+                       {booking.eventTime && (
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-5 w-5 text-primary" />
+                          <p className="text-sm">Event Time: {booking.eventTime}</p>
+                        </div>
+                      )}
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground">Status</h4>
+                        <p className={`text-sm font-semibold ${booking.verified ? 'text-green-600' : 'text-amber-600'}`}>
+                          {booking.verified ? 'Verified & Checked In' : 'Not Checked In'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="md:ml-auto">
+                    <div className="flex flex-col items-center md:items-end">
                        <QRCodeDisplay data={booking.qrCodeData} eventTitle={booking.eventTitle} />
                     </div>
                   </CardContent>
+                  <CardFooter className="pt-4 mt-4 border-t">
+                     <Button variant="outline" size="sm" asChild>
+                        <Link href={`/events/${booking.eventId}`} className="flex items-center">
+                            <Info className="h-4 w-4 mr-2" /> View Original Event
+                        </Link>
+                      </Button>
+                  </CardFooter>
                 </Card>
               ))}
             </div>
@@ -147,3 +170,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+

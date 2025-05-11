@@ -1,3 +1,4 @@
+
 import { EventList } from '@/components/events/EventList';
 import type { Event } from '@/types';
 import { collection, getDocs, orderBy, query, Timestamp } from 'firebase/firestore';
@@ -34,10 +35,10 @@ export default async function HomePage() {
   return (
     <div className="space-y-8">
       <section className="text-center py-12 bg-gradient-to-r from-primary/10 via-secondary/5 to-accent/10 rounded-xl shadow-lg">
-        <h1 className="text-5xl font-extrabold tracking-tight mb-4">
-          Welcome to <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">{siteConfig.name}</span>
+        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">
+          Welcome to <span className="block sm:inline bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">{siteConfig.name}</span>
         </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+        <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
           Discover and book tickets for the most exciting events happening around you. Your next adventure starts here!
         </p>
       </section>
@@ -53,3 +54,4 @@ export default async function HomePage() {
     </div>
   );
 }
+

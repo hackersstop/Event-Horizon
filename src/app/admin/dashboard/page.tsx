@@ -41,7 +41,7 @@ export default function AdminDashboardPage() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in-0 duration-500 ease-out">
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-3xl font-bold text-primary">Admin Dashboard</CardTitle>
@@ -51,7 +51,7 @@ export default function AdminDashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {adminActions.map((action) => (
-          <Card key={action.href} className="hover:shadow-xl transition-shadow duration-300 ease-in-out flex flex-col">
+          <Card key={action.href} className="hover:shadow-xl transition-shadow duration-300 ease-in-out flex flex-col animate-in fade-in-0 zoom-in-95 delay-100 fill-mode-both">
             <CardHeader className="flex-row items-center space-x-4 pb-2">
                <action.icon className="h-10 w-10 text-primary" />
                <div>

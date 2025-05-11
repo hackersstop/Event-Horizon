@@ -1,3 +1,4 @@
+
 import type { User as FirebaseUser } from 'firebase/auth';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -20,6 +21,7 @@ export interface Booking {
   eventId: string;
   eventTitle?: string; // Denormalized for easier display
   eventDate?: string; // Denormalized
+  eventTime?: string; // Denormalized for event time
   bookingDate: Timestamp; 
   qrCodeData: string;
   paymentStatus: 'pending' | 'completed' | 'failed';
@@ -42,3 +44,4 @@ export interface AdminConfig {
   smtpPass?: string;
   smtpFromEmail?: string;
 }
+

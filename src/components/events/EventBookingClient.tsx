@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Event, Booking } from '@/types';
@@ -43,6 +44,7 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
         eventId: event.id,
         eventTitle: event.title,
         eventDate: event.date,
+        eventTime: event.time, // Added event time
         paymentStatus: 'completed',
         paymentId: paymentId,
         verified: false,
@@ -137,3 +139,4 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
     </div>
   );
 }
+

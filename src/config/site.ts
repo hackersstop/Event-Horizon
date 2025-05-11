@@ -18,8 +18,8 @@ export type SiteConfig = {
 };
 
 export const siteConfig: SiteConfig = {
-  name: "EventHorizon",
-  description: "Book amazing events with EventHorizon!",
+  name: "Event Horizon powered by cyfo antihack",
+  description: "Book amazing events with Event Horizon powered by cyfo antihack!",
   adminEmail: "admin@gmail.com", // Defined admin email
   mainNav: [
     {

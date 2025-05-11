@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 import { LogIn, UserPlus, Home } from 'lucide-react'; // Assuming UserPlus for general login icon if no Google icon from Lucide
 import Link from 'next/link';
+import { siteConfig } from '@/config/site';
 
 // Simple Google Icon SVG as Lucide doesn't have one
 const GoogleIcon = () => (
@@ -44,8 +46,8 @@ export default function LoginPage() {
     <div className="flex justify-center items-center min-h-[calc(100vh-200px)] bg-gradient-to-br from-background to-secondary/10 p-4">
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
-            Login to EventHorizon
+          <CardTitle className="text-2xl md:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent leading-tight">
+            Login to {siteConfig.name}
           </CardTitle>
           <CardDescription className="text-md pt-1">
             Access your bookings and manage your event experiences.
@@ -76,3 +78,4 @@ export default function LoginPage() {
     </div>
   );
 }
+
