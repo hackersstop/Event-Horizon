@@ -9,11 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { QRCodeDisplay } from '@/components/events/QRCodeDisplay';
 import { Spinner } from '@/components/ui/spinner';
-import { Ticket, CalendarDays, ShoppingBag, UserCircle, Info, Clock, Hash } from 'lucide-react';
+import { Ticket, CalendarDays, ShoppingBag, UserCircle, Info, Clock, Hash, AtSign } from 'lucide-react';
 import Link from 'next/link';
 import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { generateDisplayTicketId } from '@/lib/ticketUtils';
 
 async function getUserBookings(userId: string): Promise<Booking[]> {
   try {
@@ -22,13 +23,15 @@ async function getUserBookings(userId: string): Promise<Booking[]> {
     const bookingSnapshot = await getDocs(q);
     return bookingSnapshot.docs.map(doc => {
       const data = doc.data();
+      const bookingId = doc.id;
       return { 
-        id: doc.id, 
+        id: bookingId, 
         ...data,
+        displayTicketId: data.displayTicketId || generateDisplayTicketId(bookingId), // Ensure displayTicketId
         bookingDate: data.bookingDate as Timestamp, 
         eventDate: data.eventDate, 
         eventTime: data.eventTime, 
-        qrCodeData: data.qrCodeData || `EVENT_ID:${data.eventId};USER_ID:${data.userId};BOOKING_ID:${doc.id}`,
+        qrCodeData: data.qrCodeData || bookingId, // qrCodeData should be the actual bookingId for verification
       } as Booking;
     });
   } catch (error) {
@@ -124,9 +127,15 @@ export default function ProfilePage() {
                   <CardContent className="grid md:grid-cols-2 gap-6 items-start">
                     <div className="space-y-3">
                        <div>
-                        <h4 className="text-sm font-medium text-muted-foreground flex items-center"><Hash className="h-4 w-4 mr-1"/>Ticket ID</h4>
-                        <p className="text-md font-semibold text-primary break-all">{booking.id}</p>
+                        <h4 className="text-sm font-medium text-muted-foreground flex items-center"><Hash className="h-4 w-4 mr-1"/>Ticket Reference</h4>
+                        <p className="text-lg font-bold text-primary">{booking.displayTicketId}</p>
                       </div>
+                       {user.email && (
+                        <div className="flex items-center space-x-2">
+                          <AtSign className="h-5 w-5 text-muted-foreground" />
+                          <p className="text-sm">Email: {user.email}</p>
+                        </div>
+                       )}
                       <div>
                         <h4 className="text-sm font-medium text-muted-foreground">Event Details</h4>
                         <p className="text-md font-semibold">{booking.eventTitle || 'N/A'}</p>
@@ -151,7 +160,12 @@ export default function ProfilePage() {
                       </div>
                     </div>
                     <div className="flex flex-col items-center md:items-end">
-                       <QRCodeDisplay data={booking.id} eventTitle={booking.eventTitle} fullQrDataString={booking.qrCodeData} />
+                       <QRCodeDisplay 
+                          qrDataToEncode={booking.id} // This is the actual Firestore booking ID for QR
+                          displayTicketId={booking.displayTicketId}
+                          eventTitle={booking.eventTitle}
+                          verifiableId={booking.id} // Display the full verifiable ID
+                       />
                     </div>
                   </CardContent>
                   <CardFooter className="pt-4 mt-4 border-t">
@@ -170,4 +184,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-

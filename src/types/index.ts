@@ -16,18 +16,21 @@ export interface Event {
 }
 
 export interface Booking {
-  id: string;
+  id: string; // Firestore document ID (unique, alphanumeric)
   userId: string;
   eventId: string;
+  displayTicketId: string; // 8-digit numeric string for display
   eventTitle?: string; // Denormalized for easier display
   eventDate?: string; // Denormalized
   eventTime?: string; // Denormalized for event time
   bookingDate: Timestamp; 
-  qrCodeData: string;
+  qrCodeData: string; // Contains the full Firestore booking.id for verification
   paymentStatus: 'pending' | 'completed' | 'failed';
   paymentId?: string;
   verified: boolean;
   paymentCurrency?: string; // e.g., 'INR'
+  userEmail?: string; // For admin view
+  userPhone?: string; // Optional, for admin view
 }
 
 export interface AppUser extends FirebaseUser {
@@ -36,6 +39,8 @@ export interface AppUser extends FirebaseUser {
 
 export interface AdminConfig {
   id?: string; // Document ID if fetched
+  appName?: string;
+  appOwner?: string;
   razorpayKeyId?: string;
   razorpayKeySecret?: string;
   smtpHost?: string;
@@ -45,3 +50,13 @@ export interface AdminConfig {
   smtpFromEmail?: string;
 }
 
+// Represents user data that might be stored in a separate 'users' collection
+export interface UserProfile {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  phoneNumber?: string | null; // Typically collected separately
+  createdAt: Timestamp;
+  // other custom fields
+}

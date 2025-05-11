@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
-import { Users } from 'lucide-react';
+import { Users, Info } from 'lucide-react';
 
 export default function AdminUsersPage() {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -42,10 +42,18 @@ export default function AdminUsersPage() {
           <div className="text-center py-16">
             <Users className="h-20 w-20 text-muted-foreground mx-auto mb-6" />
             <p className="text-2xl font-semibold text-muted-foreground mb-2">User Management Features Coming Soon!</p>
-            <p className="text-md text-muted-foreground max-w-md mx-auto">
-              This section will allow you to view, edit, and manage all user accounts, assign roles, 
-              and control access permissions.
+            <p className="text-md text-muted-foreground max-w-xl mx-auto mb-6">
+              This section will allow administrators to view user details, manage roles, and oversee event participation. 
+              Key information such as user email, booking history, and potentially phone numbers (if provided by users and stored) will be accessible here.
             </p>
+            <div className="mt-4 p-4 bg-muted/50 border border-dashed rounded-lg max-w-lg mx-auto text-sm">
+                <div className="flex items-start text-muted-foreground">
+                    <Info className="h-5 w-5 mr-2 mt-0.5 shrink-0"/>
+                    <span>
+                        <strong>Note:</strong> Comprehensive user listing and management typically requires backend integration (e.g., Firebase Admin SDK via Cloud Functions) to securely access and modify all user data beyond the currently authenticated admin. Phone numbers are not collected by default through Google Sign-In and would require a separate user profile update mechanism.
+                    </span>
+                </div>
+            </div>
           </div>
         </CardContent>
       </Card>
