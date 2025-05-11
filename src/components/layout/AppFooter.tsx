@@ -10,9 +10,6 @@ export function AppFooter() {
           <p className="text-balance text-center text-sm leading-loose text-muted-foreground md:text-left">
             © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
           </p>
-          <p className="text-balance text-center text-sm leading-loose text-muted-foreground md:text-left">
-            Built with Next.js and Tailwind CSS.
-          </p>
         </div>
         <p className="text-balance text-center text-sm leading-loose text-muted-foreground md:text-right">
           Developed by{' '}
@@ -30,3 +27,4 @@ export function AppFooter() {
     </footer>
   );
 }
+
