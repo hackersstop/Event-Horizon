@@ -18,7 +18,7 @@ const EnhancedQrCodePlaceholderIcon = ({ dataHint }: { dataHint: string }) => (
     className="text-card-foreground"
     data-ai-hint="qr code graphic"
     shapeRendering="crispEdges"
-    aria-label={`QR Code representing: ${dataHint}`}
+    aria-label={`QR Code representing: ${dataHint}`} // Fixed: Changed to template literal
   >
     {/* Background - ensure parent container has padding for quiet zone if needed */}
     {/* <rect width="50" height="50" fill="white"/> */}
@@ -45,7 +45,7 @@ const EnhancedQrCodePlaceholderIcon = ({ dataHint }: { dataHint: string }) => (
 
     {/* Timing Patterns (Alternating black/white modules) */}
     {/* Horizontal (between top-left and top-right finders) */}
-    {Array.from({ length: 28 }).map((_, i) => ( // 40-3-7 - (3+7) = 23. Length should connect finders.
+    {Array.from({ length: 28 }).map((_, i) => ( 
       i % 2 === 0 && <rect key={`th-${i}`} x={10 + i} y="8" width="1" height="1" fill="currentColor" />
     ))}
     {/* Vertical (between top-left and bottom-left finders) */}
@@ -55,7 +55,7 @@ const EnhancedQrCodePlaceholderIcon = ({ dataHint }: { dataHint: string }) => (
     
     {/* Data & Error Correction Modules (Simplified pseudo-random pattern) */}
     {/* This creates a dense, varied pattern. */}
-    {Array.from({ length: 26 }).flatMap((_, r) => // Grid for data modules
+    {Array.from({ length: 26 }).flatMap((_, r) => 
       Array.from({ length: 26 }).map((_, c) => {
         const x = 11 + c * 1.15; 
         const y = 11 + r * 1.15;
@@ -101,7 +101,7 @@ export function QRCodeDisplay({ qrDataToEncode, displayTicketId, eventTitle, ver
         title={`QR Code for Verifiable ID: ${verifiableId}`}
       >
         {qrDataToEncode ? (
-          <EnhancedQrCodePlaceholderIcon dataHint={qrDataToEncode} /> {/* Changed dataHint to qrDataToEncode */}
+          <EnhancedQrCodePlaceholderIcon dataHint={qrDataToEncode} /> 
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground text-center">
             QR Data Missing
@@ -127,3 +127,4 @@ export function QRCodeDisplay({ qrDataToEncode, displayTicketId, eventTitle, ver
     </div>
   );
 }
+
