@@ -24,8 +24,6 @@ const loginSchema = z.object({
 
 type LoginFormInputs = z.infer<typeof loginSchema>;
 
-const ALLOWED_ADMIN_EMAIL = 'admin@gmail.com';
-
 export default function AdminLoginPage() {
   const { isAdmin, signInWithEmail, loading, user, signOut } = useAuth();
   const router = useRouter();
@@ -45,12 +43,16 @@ export default function AdminLoginPage() {
             router.push('/admin/dashboard');
           }
         } else {
+          // This block handles users who are logged in but NOT admin.
+          // This could be a regular user, or someone who used admin@gmail.com 
+          // but their UID isn't in Firestore 'admins' (and Firestore was online).
           if (pathname === '/admin/login') { 
             toast({
               title: "Access Denied",
-              description: "You are not authorized to access the admin panel. Please log in with admin credentials.",
+              description: "You are not authorized to access the admin panel. Ensure your account has admin privileges.",
               variant: "destructive"
             });
+            // Sign out to prevent non-admin session on admin login page
             signOut().catch(err => console.error("Error signing out non-admin from admin login:", err));
           }
         }
@@ -60,10 +62,10 @@ export default function AdminLoginPage() {
 
 
   const onSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
-    if (data.email.toLowerCase() !== ALLOWED_ADMIN_EMAIL) {
+    if (data.email.toLowerCase() !== siteConfig.adminEmail.toLowerCase()) {
       toast({
         title: "Access Denied",
-        description: `Only ${ALLOWED_ADMIN_EMAIL} is authorized for admin login.`,
+        description: `Only ${siteConfig.adminEmail} is authorized for admin login.`,
         variant: "destructive",
       });
       return;
@@ -72,21 +74,20 @@ export default function AdminLoginPage() {
     setIsSubmitting(true);
     try {
       await signInWithEmail(data.email, data.password);
-      // If login is successful & user is admin, AuthContext will redirect.
-      // If login is successful & user is NOT admin (e.g. admin@gmail.com not in Firestore 'admins' collection), 
-      // the useEffect above will toast "Access Denied" and sign out.
-      // If login fails (e.g. wrong password), signInWithEmail in AuthContext will toast "Login Failed".
+      // AuthContext's onAuthStateChanged will handle redirection or further actions.
+      // If login is successful & user is determined to be admin (by AuthContext), they'll be redirected.
+      // If login is successful but user is determined NOT to be admin (e.g. Firestore check failed online),
+      // the useEffect above will toast "Access Denied" and sign them out.
     } catch (error: any) {
-      // This catch is for errors re-thrown by signInWithEmail or other unexpected errors.
-      // The toast for auth failure is typically handled in AuthContext's signInWithEmail.
-      // If it's not, this is a fallback, but generally signInWithEmail should handle its own errors.
-      // console.error("Admin login form submission error:", error); 
-      // No specific toast here as AuthContext.signInWithEmail handles it.
+      // signInWithEmail in AuthContext handles its own primary error toasts (e.g. wrong password).
+      // This catch is for other unexpected issues or if signInWithEmail re-throws.
+      // console.error("Admin login form submission error:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Show spinner if auth is loading, or if user is admin (they will be redirected by useEffect).
   if (loading || (user && isAdmin)) { 
     return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
@@ -95,6 +96,7 @@ export default function AdminLoginPage() {
     );
   }
   
+  // Show spinner if a non-admin user has just "logged in" via this form and is about to be signed out by useEffect.
   if (user && !isAdmin && !loading && pathname === '/admin/login') {
      return (
       <div className="flex justify-center items-center min-h-[calc(100vh-200px)]">
@@ -110,7 +112,7 @@ export default function AdminLoginPage() {
           <ShieldAlert className="mx-auto h-12 w-12 text-primary mb-2" />
           <CardTitle className="text-3xl font-bold">Admin Portal</CardTitle>
           <CardDescription className="text-md pt-1">
-            Please login to manage {siteConfig.name}. <br /> Use {ALLOWED_ADMIN_EMAIL} only.
+            Please login to manage {siteConfig.name}. <br /> Use {siteConfig.adminEmail} only.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -120,7 +122,7 @@ export default function AdminLoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder={ALLOWED_ADMIN_EMAIL}
+                placeholder={siteConfig.adminEmail}
                 {...register('email')}
                 className={errors.email ? 'border-destructive' : ''}
                 aria-invalid={errors.email ? "true" : "false"}
@@ -154,4 +156,3 @@ export default function AdminLoginPage() {
     </div>
   );
 }
-

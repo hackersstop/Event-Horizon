@@ -12,6 +12,7 @@ export type NavItem = {
 export type SiteConfig = {
   name: string;
   description: string;
+  adminEmail: string; // Added admin email
   mainNav: NavItem[];
   adminNav: NavItem[];
 };
@@ -19,6 +20,7 @@ export type SiteConfig = {
 export const siteConfig: SiteConfig = {
   name: "EventHorizon",
   description: "Book amazing events with EventHorizon!",
+  adminEmail: "admin@gmail.com", // Defined admin email
   mainNav: [
     {
       title: "Home",
