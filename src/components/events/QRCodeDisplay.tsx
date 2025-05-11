@@ -5,57 +5,87 @@ interface QRCodeDisplayProps {
   fullQrDataString?: string; // Optional: The full composite QR string for display
 }
 
-// Placeholder for a more realistic QR Code SVG
-// In a real app, you'd use a library like qrcode.react to generate an actual QR code image.
+// New, more realistic QR Code SVG placeholder
 const QrCodePlaceholderIcon = () => (
   <svg
     width="100%"
     height="100%"
-    viewBox="0 0 40 40"
+    viewBox="0 0 50 50" // Increased viewbox for more detail
     xmlns="http://www.w3.org/2000/svg"
-    className="text-card-foreground" // Uses text color for QR modules
+    className="text-card-foreground"
     data-ai-hint="qr code graphic"
   >
-    {/* Background of the SVG is transparent, relies on parent div's background */}
-    {/* Finder Patterns (Top-Left, Top-Right, Bottom-Left) - black parts */}
-    <rect x="3" y="3" width="9" height="9" fill="currentColor"/>
-    <rect x="5" y="5" width="5" height="5" className="fill-card"/> {/* Inner white part */}
-    <rect x="6" y="6" width="3" height="3" fill="currentColor"/>
+    {/* Quiet zone - ensure parent div provides this with padding or use a white rect */}
+    {/* Finder Patterns (Top-Left, Top-Right, Bottom-Left) */}
+    {/* Top-left */}
+    <rect x="4" y="4" width="10" height="10" fill="currentColor"/>
+    <rect x="6" y="6" width="6" height="6" className="fill-card"/>
+    <rect x="7" y="7" width="4" height="4" fill="currentColor"/>
 
-    <rect x="28" y="3" width="9" height="9" fill="currentColor"/>
-    <rect x="30" y="5" width="5" height="5" className="fill-card"/> {/* Inner white part */}
-    <rect x="31" y="6" width="3" height="3" fill="currentColor"/>
+    {/* Top-right */}
+    <rect x="36" y="4" width="10" height="10" fill="currentColor"/>
+    <rect x="38" y="6" width="6" height="6" className="fill-card"/>
+    <rect x="39" y="7" width="4" height="4" fill="currentColor"/>
 
-    <rect x="3" y="28" width="9" height="9" fill="currentColor"/>
-    <rect x="5" y="30" width="5" height="5" className="fill-card"/> {/* Inner white part */}
-    <rect x="6" y="31" width="3" height="3" fill="currentColor"/>
+    {/* Bottom-left */}
+    <rect x="4" y="36" width="10" height="10" fill="currentColor"/>
+    <rect x="6" y="38" width="6" height="6" className="fill-card"/>
+    <rect x="7" y="39" width="4" height="4" fill="currentColor"/>
 
-    {/* Alignment Pattern (example, smaller) */}
-    <rect x="25" y="25" width="6" height="6" fill="currentColor"/>
-    <rect x="26.5" y="26.5" width="3" height="3" className="fill-card"/> {/* Inner white part */}
-    
+    {/* Alignment Pattern (example) */}
+    <rect x="32" y="32" width="7" height="7" fill="currentColor"/>
+    <rect x="33.5" y="33.5" width="4" height="4" className="fill-card"/>
+    <rect x="34.5" y="34.5" width="2" height="2" fill="currentColor"/>
 
-    {/* Simplified Data Modules (random-ish pattern) - filled with currentColor */}
-    {[
-      [14,3,2,2],[16,3,2,2],[18,3,2,2],[20,3,2,2],[22,3,2,2],[24,3,2,2],
-      [3,14,2,2],[3,16,2,2],[3,18,2,2],[3,20,2,2],[3,22,2,2],[3,24,2,2],
-      [14,5,2,2],[18,5,2,2],[22,5,2,2],
-      [5,14,2,2],[5,18,2,2],[5,22,2,2],
-      [14,14,2,2],[16,14,2,2],[18,14,2,2],[20,14,2,2],[22,14,2,2],[24,14,2,2],
-      [14,16,2,2],[24,16,2,2],
-      [14,18,2,2],[18,18,2,2],[22,18,2,2],
-      [14,20,2,2],[24,20,2,2],
-      [14,22,2,2],[16,22,2,2],[18,22,2,2],[20,22,2,2],[22,22,2,2],[24,22,2,2],
-      [14,24,2,2],[20,24,2,2],
-      [28,14,2,2],[30,14,2,2],[32,14,2,2],[34,14,2,2],
-      [14,28,2,2],[14,30,2,2],[14,32,2,2],[14,34,2,2],
-      [28,28,2,2],[30,28,2,2],[32,28,2,2],[34,28,2,2],[30,30,2,2],[34,32,2,2],[28,34,2,2],[32,30,2,2],
-      [13,13,2,2],[13,25,2,2],[25,13,2,2], // Some more dots
-      [8,20,2,2],[20,8,2,2],[8,8,2,2]
-    ].map(([x, y, w, h], i) => (
-      <rect key={i} x={x as number} y={y as number} width={w as number} height={h as number} fill="currentColor" />
+    {/* Timing Patterns (simplified) */}
+    {[...Array(7)].map((_, i) => (
+      <React.Fragment key={`timing-h-${i}`}>
+        <rect x={16 + i * 2} y="10" width="1.5" height="1.5" fill="currentColor" />
+        { i % 2 === 0 && <rect x={17 + i * 2} y="10" width="1.5" height="1.5" className="fill-card" />}
+      </React.Fragment>
     ))}
-    {/* Add a comment about this being a placeholder */}
+     {[...Array(7)].map((_, i) => (
+      <React.Fragment key={`timing-v-${i}`}>
+        <rect x="10" y={16 + i * 2} width="1.5" height="1.5" fill="currentColor" />
+         { i % 2 === 0 && <rect x="10" y={17 + i * 2} width="1.5" height="1.5" className="fill-card" />}
+      </React.Fragment>
+    ))}
+
+
+    {/* Simplified Data Modules (denser and more varied pattern) */}
+    {/* Using a more structured approach for "random" blocks */}
+    {
+      [
+        // Block 1
+        [16,4,2,2], [18,4,2,2], [20,4,2,2], [22,4,2,2], [24,4,2,2], [26,4,2,2], [28,4,2,2], [30,4,2,2], [32,4,2,2],
+        [16,6,2,2], [20,6,2,2], [24,6,2,2], [28,6,2,2], [32,6,2,2],
+        [16,8,2,2], [18,8,2,2], [22,8,2,2], [26,8,2,2], [30,8,2,2], 
+        // Block 2 (Vertical)
+        [4,16,2,2], [4,18,2,2], [4,20,2,2], [4,22,2,2], [4,24,2,2], [4,26,2,2], [4,28,2,2], [4,30,2,2], [4,32,2,2],
+        [6,16,2,2], [6,20,2,2], [6,24,2,2], [6,28,2,2], [6,32,2,2],
+        [8,16,2,2], [8,18,2,2], [8,22,2,2], [8,26,2,2], [8,30,2,2],
+        // Central Data Area
+        [16,16,2,2], [18,16,2,2], [20,16,2,2], [22,16,2,2], [24,16,2,2], [26,16,2,2], [28,16,2,2], [30,16,2,2], [32,16,2,2], [34,16,2,2], [36,16,2,2],
+        [16,18,2,2],                                           [26,18,2,2], [28,18,2,2],                                           [36,18,2,2],
+        [16,20,2,2], [18,20,2,2], [20,20,2,2],                  [26,20,2,2],                  [30,20,2,2], [32,20,2,2], [34,20,2,2], [36,20,2,2],
+        [16,22,2,2], [18,22,2,2],                               [28,22,2,2], [30,22,2,2],                                           [36,22,2,2],
+        [16,24,2,2], [18,24,2,2], [20,24,2,2], [22,24,2,2], [24,24,2,2], [26,24,2,2], [28,24,2,2], [30,24,2,2], [32,24,2,2], [34,24,2,2], [36,24,2,2],
+        [16,26,2,2],                                           [24,26,2,2],                                                       [34,26,2,2], [36,26,2,2],
+        [16,28,2,2], [18,28,2,2], [20,28,2,2], [22,28,2,2],                  [28,28,2,2], [30,28,2,2], [32,28,2,2], [34,28,2,2], [36,28,2,2],
+        [16,30,2,2], [18,30,2,2],                                           [26,30,2,2],                                           [34,30,2,2], [36,30,2,2],
+        [16,32,2,2], [18,32,2,2], [20,32,2,2], [22,32,2,2], [24,32,2,2],                                           [32,32,2,2], [34,32,2,2], [36,32,2,2],
+        [16,34,2,2],                                                                                           [30,34,2,2], [32,34,2,2], [34,34,2,2], [36,34,2,2],
+        [16,36,2,2], [18,36,2,2], [20,36,2,2], [22,36,2,2], [24,36,2,2], [26,36,2,2], [28,36,2,2], [30,36,2,2], [32,36,2,2], [34,36,2,2], [36,36,2,2],
+        // Some more varied blocks
+        [20,30,4,2], [26,26,2,4], [22,18,4,2] 
+      ].map(([x, y, w, h], i) => {
+        // Alternate fill for a more "random" look
+        const fillClass = i % 3 === 0 ? "fill-card" : "currentColor";
+        return (
+          <rect key={`data-${i}`} x={x as number} y={y as number} width={w as number} height={h as number} fill={fillClass} />
+        )
+      })
+    }
   </svg>
 );
 
@@ -76,7 +106,7 @@ export function QRCodeDisplay({ data: bookingId, eventTitle, fullQrDataString }:
       {eventTitle && <p className="text-lg font-semibold text-center mb-2 text-secondary">{eventTitle}</p>}
       
       <div 
-        className="w-48 h-48 bg-card p-2 rounded-md border border-foreground/20 shadow-sm" // Changed background to card for contrast with icon
+        className="w-48 h-48 bg-white p-2 rounded-md border border-foreground/20 shadow-sm" // Explicit white background for QR
         title={bookingId ? `QR Code for Ticket ID: ${bookingId}` : 'QR Data Not Available'}
         aria-label={`QR Code placeholder for event: ${eventTitle || 'booking'}. Ticket ID: ${bookingId || 'N/A'}`}
       >
