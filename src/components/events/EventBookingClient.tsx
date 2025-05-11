@@ -117,7 +117,9 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
 
     setBookingState('processing');
 
-    const amountInPaisa = Math.round((event.offerAmount || event.amount) * 100);
+    const finalAmount = event.offerAmount ?? event.amount;
+    const amountInPaisa = Math.round(finalAmount * 100);
+
 
     const options = {
       key: razorpayKeyId,
@@ -138,6 +140,8 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
             eventTitle: event.title,
             eventDate: event.date,
             eventTime: event.time,
+            eventAmount: event.amount, // Store original amount
+            eventOfferAmount: event.offerAmount, // Store offer amount (could be undefined)
             paymentStatus: 'completed',
             paymentId: paymentId,
             paymentCurrency: 'INR',
@@ -151,10 +155,9 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
 
           const actualBookingId = docRef.id;
           const displayId = generateDisplayTicketId(actualBookingId);
-          const compositeQrCodeDataString = actualBookingId;
-
+          
           await updateDoc(doc(db, 'bookings', actualBookingId), {
-            qrCodeData: compositeQrCodeDataString,
+            qrCodeData: actualBookingId, // QR now directly uses the booking ID
             displayTicketId: displayId,
             razorpayOrderId: orderId, 
           });
@@ -163,7 +166,7 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
             ...bookingDataForFirestore,
             id: actualBookingId,
             displayTicketId: displayId,
-            qrCodeData: compositeQrCodeDataString,
+            qrCodeData: actualBookingId,
             bookingDate: new Date() as any, // This will be a Timestamp from DB in profile
             userEmail: user.email || undefined,
           };
@@ -173,7 +176,7 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
           setBookingState('booked');
           toast({
             title: "Booking Confirmed!",
-            description: `${event.title} booked. Ticket ID: ${displayId}. (Payment: ₹${event.offerAmount || event.amount})`,
+            description: `${event.title} booked. Ticket ID: ${displayId}. (Payment: ₹${finalAmount})`,
             duration: 7000,
           });
 
@@ -255,14 +258,14 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
         <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
         <h3 className="text-2xl font-semibold text-green-700 mb-2">Booking Confirmed!</h3>
         <p className="text-green-600 mb-1">Your ticket for <strong>{event.title}</strong> is ready.</p>
-        <p className="text-green-600 mb-1">Amount paid: ₹{event.offerAmount || event.amount}</p>
+        <p className="text-green-600 mb-1">Amount paid: ₹{bookedDetails.eventOfferAmount ?? bookedDetails.eventAmount}</p>
         <p className="text-md font-semibold text-green-700 mb-4">Ticket Reference: {bookedDetails.displayTicketId}</p>
         
         <QRCodeDisplay 
-          qrDataToEncode={generatedBookingId} 
+          qrDataToEncode={generatedBookingId} // Actual booking ID for QR
           displayTicketId={bookedDetails.displayTicketId}
           eventTitle={event.title}
-          verifiableId={generatedBookingId}
+          verifiableId={generatedBookingId} // Display the full verifiable ID
         />
         <Button onClick={() => router.push('/profile')} className="mt-6 bg-green-600 hover:bg-green-700">
           View My Bookings
@@ -299,7 +302,7 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
         )}
         {authLoading ? 'Loading User...' : 
          loadingConfig ? 'Loading Payment Gateway...' :
-         (bookingState === 'processing' ? 'Processing Payment...' : `Book Now & Pay ₹${event.offerAmount || event.amount}`)}
+         (bookingState === 'processing' ? 'Processing Payment...' : `Book Now & Pay ₹${event.offerAmount ?? event.amount}`)}
       </Button>
       <p className="text-xs text-muted-foreground mt-2 text-center flex items-center justify-center">
         <CreditCard className="h-3 w-3 mr-1"/> Secure payment with Razorpay

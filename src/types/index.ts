@@ -31,6 +31,9 @@ export interface Booking {
   paymentCurrency?: string; // e.g., 'INR'
   userEmail?: string; // For admin view
   userPhone?: string; // Optional, for admin view
+  eventAmount?: number; // Denormalized original event amount at time of booking
+  eventOfferAmount?: number; // Denormalized event offer amount at time of booking
+  razorpayOrderId?: string; // To store Razorpay order ID if available
 }
 
 export interface AppUser extends FirebaseUser {
