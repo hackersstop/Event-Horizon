@@ -32,7 +32,7 @@ export function EventCard({ event }: EventCardProps) {
         <div className="text-sm text-muted-foreground space-y-1">
           <div className="flex items-center">
             <CalendarDays className="h-4 w-4 mr-2 text-primary" />
-            <span>{new Date(event.date).toLocaleDateString()} at {event.time}</span>
+            <span>{new Date(event.date).toLocaleDateString('en-IN')} at {event.time}</span>
           </div>
           <div className="flex items-center">
             <MapPin className="h-4 w-4 mr-2 text-primary" />
@@ -50,11 +50,11 @@ export function EventCard({ event }: EventCardProps) {
           <span className="text-lg font-bold text-primary">
             {event.offerAmount ? (
               <>
-                <span className="line-through text-muted-foreground text-sm mr-1">${event.amount}</span>
-                ${event.offerAmount}
+                <span className="line-through text-muted-foreground text-sm mr-1">₹{event.amount}</span>
+                ₹{event.offerAmount}
               </>
             ) : (
-              `$${event.amount}`
+              `₹${event.amount}`
             )}
           </span>
         </div>

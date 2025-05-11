@@ -1,21 +1,28 @@
+
 'use client';
 
 import type { ReactNode } from 'react';
 import React, { createContext, useState, useEffect } from 'react';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
+import { 
+  onAuthStateChanged, 
+  signOut as firebaseSignOut,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithEmailAndPassword
+} from 'firebase/auth';
 import { auth, db } from '@/lib/firebase/config';
 import type { AppUser } from '@/types';
 import { doc, getDoc } from 'firebase/firestore';
 import { useRouter, usePathname } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: AppUser | null;
   isAdmin: boolean;
   loading: boolean;
-  signInWithGoogle: () => Promise<void>; // Placeholder
-  signInWithEmail: (email: string, pass: string) => Promise<void>; // Placeholder
-  signUpWithEmail?: (email: string, pass: string) => Promise<void>; // Placeholder for admin creation if needed
+  signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, pass: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -27,27 +34,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const { toast } = useToast();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      setLoading(true);
       if (firebaseUser) {
-        // Check if user is admin (example: check a Firestore document or custom claims)
-        // This is a simplified check; real admin checks might involve custom claims set server-side.
-        // For now, we'll assume any user with a specific UID or email could be admin.
-        // Or, we check a 'roles' collection in Firestore.
-        // For this example, we'll check if an 'admins' document exists for the user's UID.
         const adminDocRef = doc(db, 'admins', firebaseUser.uid);
         const adminDocSnap = await getDoc(adminDocRef);
         const userIsAdmin = adminDocSnap.exists();
         
-        setUser({ ...firebaseUser, isAdmin: userIsAdmin });
+        const appUser: AppUser = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          photoURL: firebaseUser.photoURL,
+          emailVerified: firebaseUser.emailVerified,
+          isAnonymous: firebaseUser.isAnonymous,
+          metadata: firebaseUser.metadata,
+          providerData: firebaseUser.providerData,
+          refreshToken: firebaseUser.refreshToken,
+          tenantId: firebaseUser.tenantId,
+          delete: firebaseUser.delete,
+          getIdToken: firebaseUser.getIdToken,
+          getIdTokenResult: firebaseUser.getIdTokenResult,
+          reload: firebaseUser.reload,
+          toJSON: firebaseUser.toJSON,
+          providerId: firebaseUser.providerId,
+          isAdmin: userIsAdmin,
+        };
+        
+        setUser(appUser);
         setIsAdmin(userIsAdmin);
 
-        if (userIsAdmin && !pathname.startsWith('/admin')) {
-          // If admin logs in and is not in admin section, redirect to admin dashboard
+        if (userIsAdmin && pathname === '/admin/login') {
+          router.push('/admin/dashboard');
+        } else if (userIsAdmin && !pathname.startsWith('/admin')) {
+          // Optional: redirect admin to dashboard if they land on a non-admin page after login
           // router.push('/admin/dashboard');
         } else if (!userIsAdmin && pathname.startsWith('/admin')) {
-          // If non-admin tries to access admin page, redirect to home
+          toast({ title: "Access Denied", description: "You are not authorized to access admin pages.", variant: "destructive"});
           router.push('/');
         }
 
@@ -57,48 +83,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (pathname.startsWith('/admin') && pathname !== '/admin/login') {
           router.push('/admin/login');
         } else if (pathname === '/profile') {
-           router.push('/login');
+           router.push('/login?redirect=/profile');
         }
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [router, pathname]);
+  }, [router, pathname, toast]);
 
-  // Placeholder functions - implement with Firebase SDK
   const signInWithGoogle = async () => {
-    // Implement Google Sign-In
-    console.log('signInWithGoogle called');
-    // Example:
-    // const provider = new GoogleAuthProvider();
-    // await signInWithPopup(auth, provider);
-    alert("Google Sign-In not implemented yet. Redirecting to homepage for demo.");
-    router.push('/');
+    setLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      // onAuthStateChanged will handle setting user and admin state
+      // Redirection will be handled by useEffect based on admin status and current path
+      toast({ title: "Login Successful", description: "Welcome!" });
+    } catch (error: any) {
+      console.error("Google sign-in failed:", error);
+      toast({ variant: "destructive", title: "Login Failed", description: error.message || "Could not sign in with Google." });
+      setLoading(false);
+    }
   };
 
   const signInWithEmail = async (email: string, pass: string) => {
-    // Implement Email/Password Sign-In
-    console.log('signInWithEmail called with', email, pass);
-    // Example:
-    // await signInWithEmailAndPassword(auth, email, pass);
-    alert("Email Sign-In not implemented yet. Assuming admin login for demo.");
-    // Mock admin user for demo
-    const mockAdminUser = { uid: 'admin123', email: email, displayName: 'Admin User', isAdmin: true } as AppUser;
-    setUser(mockAdminUser);
-    setIsAdmin(true);
-    router.push('/admin/dashboard');
+    setLoading(true);
+    try {
+      await signInWithEmailAndPassword(auth, email, pass);
+      // onAuthStateChanged will handle user and admin state update
+      // Redirection handled by useEffect
+    } catch (error: any) {
+      console.error("Email/Password sign-in failed:", error);
+      toast({ variant: "destructive", title: "Login Failed", description: error.message || "Invalid credentials or server error."});
+      setLoading(false); // Ensure loading is false on error
+      // Rethrow to allow login page to handle UI state like isSubmitting
+      throw error;
+    }
+    // setLoading will be managed by onAuthStateChanged
   };
 
   const signOut = async () => {
+    setLoading(true);
     await firebaseSignOut(auth);
-    setUser(null);
-    setIsAdmin(false);
-    if (pathname.startsWith('/admin')) {
-      router.push('/admin/login');
-    } else {
-      router.push('/');
-    }
+    // setUser and setIsAdmin will be updated by onAuthStateChanged
+    const isAdminPage = pathname.startsWith('/admin');
+    // setLoading(false); // onAuthStateChanged will set loading to false
+    router.push(isAdminPage ? '/admin/login' : '/');
+    toast({ title: "Signed Out", description: "You have been successfully signed out." });
   };
 
   return (

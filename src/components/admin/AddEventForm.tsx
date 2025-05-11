@@ -10,17 +10,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Loader2, Save } from 'lucide-react';
-// import { createEvent } from '@/actions/eventActions'; // Placeholder for server action
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase/config';
 import type { Event } from '@/types';
 
 const eventSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   location: z.string().min(3, 'Location must be at least 3 characters'),
-  date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Invalid date' }),
+  date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'Invalid date (YYYY-MM-DD)' }),
   time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Invalid time format (HH:MM)'),
   amount: z.coerce.number().positive('Amount must be a positive number'),
-  offerAmount: z.coerce.number().positive('Offer amount must be a positive number').optional(),
+  offerAmount: z.coerce.number().positive('Offer amount must be a positive number').optional().nullable(),
   imageUrl: z.string().url('Invalid URL format'),
 });
 
@@ -31,28 +32,29 @@ export function AddEventForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, handleSubmit, reset, formState: { errors } } = useForm<EventFormInputs>({
     resolver: zodResolver(eventSchema),
+    defaultValues: {
+      imageUrl: 'https://picsum.photos/seed/eventplaceholder/600/400' // Default placeholder
+    }
   });
 
   const onSubmit: SubmitHandler<EventFormInputs> = async (data) => {
     setIsSubmitting(true);
     try {
-      // const newEvent: Omit<Event, 'id' | 'createdAt'> = data;
-      // In a real app, call a server action:
-      // const result = await createEvent(newEvent);
-      // if (result.success) {
-      //   toast({ title: 'Event Created!', description: `${data.title} has been successfully added.` });
-      //   reset();
-      // } else {
-      //   toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to create event.' });
-      // }
+      const eventData: Omit<Event, 'id' | 'createdAt'> = {
+        ...data,
+        offerAmount: data.offerAmount || undefined, // Ensure undefined if not provided
+      };
       
-      // Mock success
-      console.log('Event data submitted:', data);
-      toast({ title: 'Event Created! (Mock)', description: `${data.title} would be added.` });
+      await addDoc(collection(db, 'events'), {
+        ...eventData,
+        createdAt: serverTimestamp(),
+      });
+      
+      toast({ title: 'Event Created!', description: `${data.title} has been successfully added.` });
       reset(); // Reset form fields
     } catch (error) {
       console.error('Failed to create event:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred while creating the event.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -92,14 +94,14 @@ export function AddEventForm() {
           {errors.time && <p className="text-sm text-destructive mt-1">{errors.time.message}</p>}
         </div>
         <div>
-          <Label htmlFor="amount">Amount ($)</Label>
+          <Label htmlFor="amount">Amount (₹)</Label>
           <Input id="amount" type="number" step="0.01" {...register('amount')} aria-invalid={errors.amount ? "true" : "false"} />
           {errors.amount && <p className="text-sm text-destructive mt-1">{errors.amount.message}</p>}
         </div>
       </div>
       
       <div>
-        <Label htmlFor="offerAmount">Offer Amount ($) (Optional)</Label>
+        <Label htmlFor="offerAmount">Offer Amount (₹) (Optional)</Label>
         <Input id="offerAmount" type="number" step="0.01" {...register('offerAmount')} aria-invalid={errors.offerAmount ? "true" : "false"} />
         {errors.offerAmount && <p className="text-sm text-destructive mt-1">{errors.offerAmount.message}</p>}
       </div>

@@ -7,8 +7,28 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, CheckCircle, XCircle, TicketCheck, AlertTriangle } from 'lucide-react';
-// import { verifyTicket } from '@/actions/adminActions'; // Placeholder server action
+import { doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase/config';
 import type { Booking } from '@/types';
+
+// QR Data Format: EVENT_ID:event_id_val;USER_ID:user_id_val;BOOKING_ID:booking_id_val
+// Example: "EVENT_ID:eventXYZ;USER_ID:userABC;BOOKING_ID:booking123"
+const parseQRData = (data: string): { bookingId: string | null, eventId: string | null, userId: string | null } => {
+  const parts = data.split(';');
+  let bookingId: string | null = null;
+  let eventId: string | null = null;
+  let userId: string | null = null;
+
+  parts.forEach(part => {
+    const [key, value] = part.split(':');
+    if (key === 'BOOKING_ID') bookingId = value;
+    if (key === 'EVENT_ID') eventId = value;
+    if (key === 'USER_ID') userId = value;
+  });
+  
+  return { bookingId, eventId, userId };
+};
+
 
 export function QRScannerClient() {
   const { toast } = useToast();
@@ -23,34 +43,42 @@ export function QRScannerClient() {
     }
     setIsVerifying(true);
     setVerificationResult(null);
-    try {
-      // In a real app, call a server action:
-      // const result = await verifyTicket(qrData);
-      // if (result.success) {
-      //   setVerificationResult({ status: 'success', message: 'Ticket Verified!', booking: result.booking });
-      //   toast({ title: 'Success', description: 'Ticket is valid.' });
-      // } else {
-      //   setVerificationResult({ status: 'error', message: result.error || 'Invalid or already used ticket.' });
-      //   toast({ variant: 'destructive', title: 'Verification Failed', description: result.error || 'Ticket invalid.' });
-      // }
 
-      // Mock verification
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      if (qrData.includes("EVENT:1") && qrData.includes("VALID")) { // Mock valid QR
-        setVerificationResult({ 
-            status: 'success', 
-            message: 'Ticket Verified Successfully!', 
-            booking: { id: 'b1', eventId: '1', eventTitle: 'Summer Music Festival', userId: 'user123', qrCodeData: qrData, verified: true } as any
-        });
-        toast({ title: 'Success', description: 'Ticket is valid and has been marked as verified.' });
-      } else if (qrData.includes("EVENT:2") && qrData.includes("USED")) { // Mock already used QR
-         setVerificationResult({ status: 'info', message: 'Ticket Already Verified/Used.'});
-         toast({ title: 'Info', description: 'This ticket has already been used.' });
-      } else { // Mock invalid QR
-        setVerificationResult({ status: 'error', message: 'Invalid Ticket Data.' });
-        toast({ variant: 'destructive', title: 'Verification Failed', description: 'This ticket is invalid.' });
+    const { bookingId } = parseQRData(qrData);
+
+    if (!bookingId) {
+      setVerificationResult({ status: 'error', message: 'Invalid QR Code format. Booking ID not found.' });
+      toast({ variant: 'destructive', title: 'Verification Failed', description: 'Invalid QR Code format.' });
+      setIsVerifying(false);
+      return;
+    }
+
+    try {
+      const bookingDocRef = doc(db, 'bookings', bookingId);
+      const bookingDocSnap = await getDoc(bookingDocRef);
+
+      if (!bookingDocSnap.exists()) {
+        setVerificationResult({ status: 'error', message: 'Booking not found. Invalid ticket.' });
+        toast({ variant: 'destructive', title: 'Verification Failed', description: 'Booking not found.' });
+        setIsVerifying(false);
+        return;
       }
-      setQrData(''); // Clear input after verification
+
+      const bookingData = { id: bookingDocSnap.id, ...bookingDocSnap.data() } as Booking;
+      
+      // Ensure bookingDate is handled as Timestamp if needed for display, though not directly used here.
+      // bookingData.bookingDate will be a Firestore Timestamp.
+
+      if (bookingData.verified) {
+        setVerificationResult({ status: 'info', message: 'Ticket Already Verified/Used.', booking: bookingData });
+        toast({ title: 'Info', description: 'This ticket has already been used.' });
+      } else {
+        await updateDoc(bookingDocRef, { verified: true });
+        const updatedBookingData = { ...bookingData, verified: true };
+        setVerificationResult({ status: 'success', message: 'Ticket Verified Successfully!', booking: updatedBookingData });
+        toast({ title: 'Success', description: 'Ticket is valid and has been marked as verified.' });
+      }
+      setQrData(''); // Clear input after verification attempt
     } catch (error) {
       console.error('Verification failed:', error);
       setVerificationResult({ status: 'error', message: 'An unexpected error occurred during verification.' });
@@ -71,14 +99,11 @@ export function QRScannerClient() {
           placeholder="Paste QR data here or use scanner"
           disabled={isVerifying}
         />
-        <p className="text-xs text-muted-foreground mt-1">For demo, try: "EVENT:1;USER:xyz;VALID" or "EVENT:2;USER:abc;USED"</p>
+        <p className="text-xs text-muted-foreground mt-1">Demo QR Data Format: EVENT_ID:id;USER_ID:id;BOOKING_ID:id</p>
+        <p className="text-xs text-muted-foreground mt-1">Example: EVENT_ID:someEvent123;USER_ID:userABC;BOOKING_ID:your_actual_booking_id_from_firestore</p>
+
       </div>
       
-      {/* Placeholder for actual camera scanning UI */}
-      {/* <Button variant="outline" className="w-full" disabled>
-        <Camera className="mr-2 h-4 w-4" /> Open Camera Scanner (Not Implemented)
-      </Button> */}
-
       <Button onClick={handleVerify} className="w-full bg-primary hover:bg-primary/90 text-lg py-3" disabled={isVerifying || !qrData.trim()}>
         {isVerifying ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <TicketCheck className="mr-2 h-5 w-5" />}
         {isVerifying ? 'Verifying...' : 'Verify Ticket'}
@@ -110,9 +135,17 @@ export function QRScannerClient() {
             }`}>{verificationResult.message}</p>
             {verificationResult.booking && (
               <div className="mt-2 text-sm">
+                <p><strong>Booking ID:</strong> {verificationResult.booking.id}</p>
                 <p><strong>Event:</strong> {verificationResult.booking.eventTitle || verificationResult.booking.eventId}</p>
                 <p><strong>User ID:</strong> {verificationResult.booking.userId}</p>
-                <p><strong>Status:</strong> {verificationResult.booking.verified ? "Verified" : "Pending Verification"}</p>
+                <p><strong>Status:</strong> {verificationResult.booking.verified ? "Verified & Checked In" : "Pending Verification"}</p>
+                {verificationResult.booking.bookingDate && 
+                  <p><strong>Booked On:</strong> {
+                    verificationResult.booking.bookingDate instanceof Timestamp 
+                    ? verificationResult.booking.bookingDate.toDate().toLocaleDateString('en-IN') 
+                    : new Date(verificationResult.booking.bookingDate).toLocaleDateString('en-IN')
+                  }</p>
+                }
               </div>
             )}
           </CardContent>

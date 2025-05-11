@@ -3,29 +3,34 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import type { Booking, Event } from '@/types';
+import type { Booking } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { QRCodeDisplay } from '@/components/events/QRCodeDisplay';
 import { Spinner } from '@/components/ui/spinner';
-import { Ticket, CalendarDays, MapPin, ShoppingBag } from 'lucide-react';
+import { Ticket, CalendarDays, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
+import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase/config';
 
-// Mock function to fetch user bookings
 async function getUserBookings(userId: string): Promise<Booking[]> {
-  // In a real app, fetch from Firestore:
-  // const bookingsQuery = query(collection(db, 'bookings'), where('userId', '==', userId), orderBy('bookingDate', 'desc'));
-  // const bookingSnapshot = await getDocs(bookingsQuery);
-  // return bookingSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Booking));
-  
-  // Mock data:
-  if (userId === "mockUserId") { // Assume a mock user ID
-    return Promise.resolve([
-      { id: 'b1', userId: 'mockUserId', eventId: '1', eventTitle: 'Summer Music Festival', eventDate: '2024-08-15', bookingDate: new Date().toISOString(), qrCodeData: `EVENT:1;USER:mockUserId;BOOKING_ID:b1`, paymentStatus: 'completed', verified: false },
-      { id: 'b2', userId: 'mockUserId', eventId: '2', eventTitle: 'Tech Innovators Conference', eventDate: '2024-09-10', bookingDate: new Date(Date.now() - 86400000).toISOString(), qrCodeData: `EVENT:2;USER:mockUserId;BOOKING_ID:b2`, paymentStatus: 'completed', verified: true },
-    ]);
+  try {
+    const bookingsCol = collection(db, 'bookings');
+    const q = query(bookingsCol, where('userId', '==', userId), orderBy('bookingDate', 'desc'));
+    const bookingSnapshot = await getDocs(q);
+    return bookingSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return { 
+        id: doc.id, 
+        ...data,
+        bookingDate: data.bookingDate as Timestamp, // Already a Timestamp from Firestore
+        eventDate: data.eventDate, // Should be string YYYY-MM-DD
+      } as Booking;
+    });
+  } catch (error) {
+    console.error("Error fetching user bookings: ", error);
+    return [];
   }
-  return Promise.resolve([]);
 }
 
 export default function ProfilePage() {
@@ -38,8 +43,15 @@ export default function ProfilePage() {
     if (!authLoading && !user) {
       router.push('/login?redirect=/profile');
     } else if (user) {
-      getUserBookings(user.uid) // Use actual user.uid for real app
-        .then(setBookings)
+      setLoadingBookings(true);
+      getUserBookings(user.uid)
+        .then(fetchedBookings => {
+            setBookings(fetchedBookings);
+        })
+        .catch(error => {
+            console.error("Failed to load bookings: ", error);
+            // Potentially set an error state here to show to the user
+        })
         .finally(() => setLoadingBookings(false));
     }
   }, [user, authLoading, router]);
@@ -53,7 +65,6 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    // This case should ideally be handled by the redirect, but as a fallback:
     return <p className="text-center">Please log in to view your profile.</p>;
   }
 
@@ -83,17 +94,17 @@ export default function ProfilePage() {
                       {booking.eventTitle || `Event ID: ${booking.eventId}`}
                     </CardTitle>
                     <CardDescription>
-                      Booked on: {new Date(booking.bookingDate).toLocaleDateString()}
+                      Booked on: {booking.bookingDate instanceof Timestamp ? booking.bookingDate.toDate().toLocaleDateString('en-IN') : new Date(booking.bookingDate).toLocaleDateString('en-IN')}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="grid md:grid-cols-2 gap-4 items-center">
                     <div>
                        <p className="text-sm text-muted-foreground flex items-center mb-1">
                         <CalendarDays className="h-4 w-4 mr-2 text-primary" />
-                        Event Date: {booking.eventDate ? new Date(booking.eventDate).toLocaleDateString() : 'N/A'}
+                        Event Date: {booking.eventDate ? new Date(booking.eventDate).toLocaleDateString('en-IN') : 'N/A'}
                       </p>
                       <p className={`text-sm font-medium ${booking.verified ? 'text-green-600' : 'text-amber-600'}`}>
-                        Status: {booking.verified ? 'Verified' : 'Not Verified'}
+                        Status: {booking.verified ? 'Verified & Checked In' : 'Not Checked In'}
                       </p>
                        <Button variant="outline" size="sm" className="mt-2" asChild>
                         <Link href={`/events/${booking.eventId}`}>View Event Details</Link>

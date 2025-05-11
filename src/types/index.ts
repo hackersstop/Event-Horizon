@@ -1,4 +1,5 @@
 import type { User as FirebaseUser } from 'firebase/auth';
+import type { Timestamp } from 'firebase/firestore';
 
 export interface Event {
   id: string;
@@ -10,7 +11,7 @@ export interface Event {
   offerAmount?: number;
   amount: number;
   imageUrl: string;
-  createdAt?: any; // Firestore Timestamp
+  createdAt?: Timestamp; 
 }
 
 export interface Booking {
@@ -19,11 +20,12 @@ export interface Booking {
   eventId: string;
   eventTitle?: string; // Denormalized for easier display
   eventDate?: string; // Denormalized
-  bookingDate: any; // Firestore Timestamp
+  bookingDate: Timestamp; 
   qrCodeData: string;
   paymentStatus: 'pending' | 'completed' | 'failed';
   paymentId?: string;
   verified: boolean;
+  paymentCurrency?: string; // e.g., 'INR'
 }
 
 export interface AppUser extends FirebaseUser {
@@ -31,6 +33,7 @@ export interface AppUser extends FirebaseUser {
 }
 
 export interface AdminConfig {
+  id?: string; // Document ID if fetched
   razorpayKeyId?: string;
   razorpayKeySecret?: string;
   smtpHost?: string;

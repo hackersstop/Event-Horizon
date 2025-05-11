@@ -10,7 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import type { AdminConfig } from '@/types';
 import { Loader2, Save, CreditCard, Mail } from 'lucide-react';
-// import { getAdminConfig, updateAdminConfig } from '@/actions/adminActions'; // Placeholder server actions
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/config';
 
 const settingsSchema = z.object({
   razorpayKeyId: z.string().optional(),
@@ -23,6 +24,8 @@ const settingsSchema = z.object({
 });
 
 type SettingsFormInputs = z.infer<typeof settingsSchema>;
+
+const ADMIN_CONFIG_DOC_PATH = 'app_config/admin_settings'; // Define a consistent path
 
 export function SettingsForm() {
   const { toast } = useToast();
@@ -37,20 +40,26 @@ export function SettingsForm() {
     async function loadConfig() {
       setIsLoadingData(true);
       try {
-        // const config = await getAdminConfig(); // Fetch current config
-        // Mock fetch
-        const mockConfig: AdminConfig = {
-            razorpayKeyId: 'rzp_test_12345',
-            razorpayKeySecret: 'test_secret',
-            smtpHost: 'smtp.example.com',
-            smtpPort: 587,
-            smtpUser: 'user@example.com',
-            smtpPass: 'password',
-            smtpFromEmail: 'noreply@example.com'
-        };
-        reset(mockConfig); // Populate form with fetched data
+        const configDocRef = doc(db, ADMIN_CONFIG_DOC_PATH);
+        const configDocSnap = await getDoc(configDocRef);
+        if (configDocSnap.exists()) {
+          reset(configDocSnap.data() as AdminConfig);
+        } else {
+          // Set default empty values if no config exists
+          reset({ 
+            razorpayKeyId: '', 
+            razorpayKeySecret: '', 
+            smtpHost: '', 
+            smtpPort: undefined, 
+            smtpUser: '', 
+            smtpPass: '', 
+            smtpFromEmail: '' 
+          });
+          toast({ title: 'Info', description: 'No existing admin configuration found. Displaying defaults.' });
+        }
       } catch (error) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Failed to load settings.' });
+        console.error('Failed to load settings:', error);
+        toast({ variant: 'destructive', title: 'Error Loading Settings', description: 'Could not fetch current admin settings.' });
       } finally {
         setIsLoadingData(false);
       }
@@ -61,20 +70,14 @@ export function SettingsForm() {
   const onSubmit: SubmitHandler<SettingsFormInputs> = async (data) => {
     setIsSubmitting(true);
     try {
-      // In a real app, call a server action:
-      // const result = await updateAdminConfig(data);
-      // if (result.success) {
-      //   toast({ title: 'Settings Updated!', description: 'Configuration saved successfully.' });
-      // } else {
-      //   toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to update settings.' });
-      // }
+      const configDocRef = doc(db, ADMIN_CONFIG_DOC_PATH);
+      // Use setDoc with merge:true to update or create the document
+      await setDoc(configDocRef, data, { merge: true }); 
       
-      // Mock success
-      console.log('Settings data submitted:', data);
-      toast({ title: 'Settings Updated! (Mock)', description: 'Configuration would be saved.' });
+      toast({ title: 'Settings Updated!', description: 'Configuration saved successfully.' });
     } catch (error) {
       console.error('Failed to update settings:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred.' });
+      toast({ variant: 'destructive', title: 'Error Saving Settings', description: 'An unexpected error occurred.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -87,14 +90,14 @@ export function SettingsForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
       <section className="space-y-4 p-6 border rounded-lg shadow-sm">
-        <h3 className="text-xl font-semibold flex items-center"><CreditCard className="mr-2 h-5 w-5 text-primary" /> Razorpay Settings</h3>
+        <h3 className="text-xl font-semibold flex items-center"><CreditCard className="mr-2 h-5 w-5 text-primary" /> Razorpay Settings (INR Payments)</h3>
         <div>
           <Label htmlFor="razorpayKeyId">Key ID</Label>
-          <Input id="razorpayKeyId" {...register('razorpayKeyId')} />
+          <Input id="razorpayKeyId" {...register('razorpayKeyId')} placeholder="rzp_live_xxxxxxxxxxxxxx" />
         </div>
         <div>
           <Label htmlFor="razorpayKeySecret">Key Secret</Label>
-          <Input id="razorpayKeySecret" type="password" {...register('razorpayKeySecret')} />
+          <Input id="razorpayKeySecret" type="password" {...register('razorpayKeySecret')} placeholder="Enter your Razorpay Key Secret" />
         </div>
       </section>
 
@@ -102,25 +105,25 @@ export function SettingsForm() {
         <h3 className="text-xl font-semibold flex items-center"><Mail className="mr-2 h-5 w-5 text-primary" /> SMTP Settings</h3>
         <div>
           <Label htmlFor="smtpHost">Host</Label>
-          <Input id="smtpHost" {...register('smtpHost')} />
+          <Input id="smtpHost" {...register('smtpHost')} placeholder="smtp.example.com" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="smtpPort">Port</Label>
-            <Input id="smtpPort" type="number" {...register('smtpPort')} />
+            <Input id="smtpPort" type="number" {...register('smtpPort')} placeholder="587" />
           </div>
           <div>
             <Label htmlFor="smtpUser">Username</Label>
-            <Input id="smtpUser" {...register('smtpUser')} />
+            <Input id="smtpUser" {...register('smtpUser')} placeholder="user@example.com" />
           </div>
         </div>
         <div>
           <Label htmlFor="smtpPass">Password</Label>
-          <Input id="smtpPass" type="password" {...register('smtpPass')} />
+          <Input id="smtpPass" type="password" {...register('smtpPass')} placeholder="Enter SMTP password" />
         </div>
         <div>
           <Label htmlFor="smtpFromEmail">From Email</Label>
-          <Input id="smtpFromEmail" type="email" {...register('smtpFromEmail')} aria-invalid={errors.smtpFromEmail ? "true" : "false"}/>
+          <Input id="smtpFromEmail" type="email" {...register('smtpFromEmail')} placeholder="noreply@example.com" aria-invalid={errors.smtpFromEmail ? "true" : "false"}/>
           {errors.smtpFromEmail && <p className="text-sm text-destructive mt-1">{errors.smtpFromEmail.message}</p>}
         </div>
       </section>

@@ -1,59 +1,31 @@
 import { EventList } from '@/components/events/EventList';
 import type { Event } from '@/types';
-
-// Mock data for events - in a real app, this would come from Firestore
-const MOCK_EVENTS: Event[] = [
-  {
-    id: '1',
-    title: 'Summer Music Festival',
-    description: 'Join us for an unforgettable weekend of music, art, and fun under the sun. Featuring top artists from around the globe!',
-    location: 'Sunset Valley Park',
-    date: '2024-08-15',
-    time: '14:00',
-    amount: 75,
-    offerAmount: 60,
-    imageUrl: 'https://picsum.photos/seed/musicfest/600/400',
-  },
-  {
-    id: '2',
-    title: 'Tech Innovators Conference',
-    description: 'A premier conference for tech enthusiasts, developers, and entrepreneurs. Discover the latest trends and network with industry leaders.',
-    location: 'Grand Convention Center',
-    date: '2024-09-10',
-    time: '09:00',
-    amount: 199,
-    imageUrl: 'https://picsum.photos/seed/techconf/600/400',
-  },
-  {
-    id: '3',
-    title: 'Art & Design Expo',
-    description: 'Explore stunning artworks and innovative designs from emerging and established artists. Workshops and live demonstrations available.',
-    location: 'City Art Gallery',
-    date: '2024-10-05',
-    time: '10:00',
-    amount: 25,
-    offerAmount: 20,
-    imageUrl: 'https://picsum.photos/seed/artexpo/600/400',
-  },
-    {
-    id: '4',
-    title: 'Culinary Masterclass Series',
-    description: 'Learn cooking techniques from world-renowned chefs. Each session focuses on a different cuisine. Limited spots available!',
-    location: 'The Gourmet Kitchen Studio',
-    date: '2024-11-12',
-    time: '18:00',
-    amount: 150,
-    imageUrl: 'https://picsum.photos/seed/cookingclass/600/400',
-  },
-];
+import { collection, getDocs, orderBy, query, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase/config';
+import { siteConfig } from '@/config/site';
 
 async function getEvents(): Promise<Event[]> {
-  // In a real app, fetch from Firestore:
-  // const eventsCol = collection(db, 'events');
-  // const eventSnapshot = await getDocs(eventsCol);
-  // const eventList = eventSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
-  // return eventList;
-  return Promise.resolve(MOCK_EVENTS);
+  try {
+    const eventsCol = collection(db, 'events');
+    // Order by date, assuming 'date' is stored in a way that Firestore can sort, e.g., YYYY-MM-DD string
+    // Or by 'createdAt' if you want to sort by creation time
+    const q = query(eventsCol, orderBy('date', 'asc')); // Or orderBy('createdAt', 'desc')
+    const eventSnapshot = await getDocs(q);
+    const eventList = eventSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return { 
+        id: doc.id, 
+        ...data,
+        // Ensure date fields are correctly formatted if they are Timestamps
+        // For this app, 'date' is a string, 'createdAt' would be a Timestamp
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : data.createdAt,
+      } as Event;
+    });
+    return eventList;
+  } catch (error) {
+    console.error("Error fetching events: ", error);
+    return [];
+  }
 }
 
 export default async function HomePage() {
@@ -81,6 +53,3 @@ export default async function HomePage() {
     </div>
   );
 }
-
-// Import siteConfig for the h1 title span
-import { siteConfig } from '@/config/site';
