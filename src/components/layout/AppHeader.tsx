@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -22,7 +21,7 @@ export function AppHeader() {
   };
 
   const renderAuthButtons = () => {
-    if (loading && !mounted) { 
+    if (!mounted || loading) { // If not mounted OR auth is still loading
       return <div className="w-32 h-9 bg-muted rounded-md animate-pulse"></div>;
     }
 
@@ -90,27 +89,35 @@ export function AppHeader() {
         </Link>
         
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
-          {navItems.map((item) => {
-            if (item.protected && !user) return null;
-            if (item.admin && (!user || !isAdmin)) return null;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="transition-colors hover:text-primary"
-              >
-                {item.title}
-              </Link>
-            );
-          })}
+          {(!mounted || loading) ? ( // If not mounted OR auth is still loading
+            // Placeholder for nav items
+            <>
+              <div className="w-16 h-4 bg-muted rounded animate-pulse"></div>
+              <div className="w-20 h-4 bg-muted rounded animate-pulse"></div>
+            </>
+          ) : (
+            // Actual nav items; navItems calculation is safe here because isAdmin and user are stable
+            navItems.map((item) => {
+              if (item.protected && !user) return null;
+              if (item.admin && (!user || !isAdmin)) return null;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="transition-colors hover:text-primary"
+                >
+                  {item.title}
+                </Link>
+              );
+            })
+          )}
         </nav>
 
         <div className="flex items-center gap-x-2">
-          {mounted && renderAuthButtons()}
+          {renderAuthButtons()}
           {/* Placeholder for theme toggle if needed in future */}
         </div>
       </div>
     </header>
   );
 }
-
