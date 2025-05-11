@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Users, ShieldCheck, ShieldOff, AlertTriangle, UserCog, Search } from 'lucide-react';
 import type { UserProfile } from '@/types';
-import { collection, getDocs, query, orderBy, Timestamp, doc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, Timestamp, doc, setDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { useToast } from '@/hooks/use-toast';
 import { siteConfig } from '@/config/site';
@@ -49,29 +49,59 @@ export default function AdminUsersPage() {
       const userSnapshot = await getDocs(q);
       
       const userListPromises = userSnapshot.docs.map(async (docSnapshot) => {
-        const data = docSnapshot.data() as Omit<UserProfile, 'uid'>; // uid is doc id
-        // Check actual admin status from 'admins' collection
+        const data = docSnapshot.data() as Omit<UserProfile, 'uid' | 'createdAt'> & { createdAt: Timestamp | Date, roles?: string[] }; // Adjust type for createdAt
+        
         const adminDocRef = doc(db, 'admins', docSnapshot.id);
         const adminDocSnap = await getDoc(adminDocRef);
         const isActuallyAdmin = adminDocSnap.exists() || data.email === siteConfig.adminEmail;
 
-        // Sync roles in user_profiles if different from actual admin status
-        let currentRoles = data.roles || ['user'];
-        if (isActuallyAdmin && !currentRoles.includes('admin')) {
-            currentRoles = [...currentRoles.filter(r => r !== 'user'), 'admin'];
-            await updateDoc(doc(db, 'user_profiles', docSnapshot.id), { roles: [...new Set(currentRoles)] });
-        } else if (!isActuallyAdmin && currentRoles.includes('admin') && data.email !== siteConfig.adminEmail) {
-            currentRoles = currentRoles.filter(r => r !== 'admin');
-            if(currentRoles.length === 0) currentRoles.push('user');
-            await updateDoc(doc(db, 'user_profiles', docSnapshot.id), { roles: [...new Set(currentRoles)] });
-        }
+        let currentRoles = data.roles && Array.isArray(data.roles) ? [...data.roles] : [];
+        let rolesChanged = false;
 
+        // Ensure new users or users without roles get 'user' role by default (unless they are the primary admin being set up)
+        if (currentRoles.length === 0 && data.email !== siteConfig.adminEmail) {
+            currentRoles.push('user');
+            rolesChanged = true;
+        }
+        
+        if (isActuallyAdmin) {
+            if (!currentRoles.includes('admin')) {
+                currentRoles.push('admin');
+                rolesChanged = true;
+            }
+            // Ensure admin also has 'user' role for consistency with AuthContext initial setup
+            if (!currentRoles.includes('user')) {
+                currentRoles.push('user');
+                rolesChanged = true;
+            }
+        } else { // Not actually admin
+            if (currentRoles.includes('admin') && data.email !== siteConfig.adminEmail) {
+                currentRoles = currentRoles.filter(r => r !== 'admin');
+                rolesChanged = true;
+            }
+            // Ensure 'user' role is present if they are not admin
+            if (!currentRoles.includes('user')) {
+                currentRoles.push('user');
+                rolesChanged = true;
+            }
+        }
+        
+        const finalRoles = [...new Set(currentRoles)]; // Remove duplicates
+        // Check if roles actually changed before updating Firestore
+        const originalRolesSorted = [...(data.roles || [])].sort().join(',');
+        const finalRolesSorted = [...finalRoles].sort().join(',');
+
+        if (originalRolesSorted !== finalRolesSorted) {
+            await updateDoc(doc(db, 'user_profiles', docSnapshot.id), { roles: finalRoles });
+            data.roles = finalRoles; // Update data object for immediate use
+        }
 
         return {
           uid: docSnapshot.id,
           ...data,
-          createdAt: data.createdAt instanceof Timestamp ? data.createdAt : Timestamp.now(), // handle cases where it might not be a Timestamp yet
-          roles: [...new Set(currentRoles)], // Ensure roles is an array and unique
+          // Convert Firestore Timestamp to Date for consistent handling, or ensure it's already a Date
+          createdAt: data.createdAt instanceof Timestamp ? data.createdAt : (data.createdAt ? new Timestamp(data.createdAt.seconds, data.createdAt.nanoseconds) : Timestamp.now()),
+          roles: finalRoles,
         } as UserProfile;
       });
       const userList = await Promise.all(userListPromises);
@@ -117,13 +147,14 @@ export default function AdminUsersPage() {
 
       if (makeAdmin) {
         await setDoc(adminDocRef, { email: targetUser.email, managedBy: adminUser.uid, managedAt: serverTimestamp() });
-        await updateDoc(userProfileDocRef, { roles: arrayUnion('admin') });
-        await updateDoc(userProfileDocRef, { roles: arrayRemove('user') }); // Optional: remove 'user' role if 'admin' is added
+        // Ensure both 'admin' and 'user' roles are present
+        await updateDoc(userProfileDocRef, { roles: arrayUnion('admin', 'user') });
         toast({ title: "Role Updated", description: `${targetUser.displayName || targetUser.email} is now an admin.` });
       } else {
         await deleteDoc(adminDocRef);
+        // Remove 'admin' role and ensure 'user' role is present
         await updateDoc(userProfileDocRef, { roles: arrayRemove('admin') });
-        await updateDoc(userProfileDocRef, { roles: arrayUnion('user') }); // Ensure 'user' role if 'admin' is removed
+        await updateDoc(userProfileDocRef, { roles: arrayUnion('user') });
         toast({ title: "Role Updated", description: `${targetUser.displayName || targetUser.email} is no longer an admin.` });
       }
       fetchUsers(); // Refresh the list
@@ -287,3 +318,4 @@ export default function AdminUsersPage() {
     </div>
   );
 }
+

@@ -61,5 +61,7 @@ export interface UserProfile {
   photoURL: string | null;
   phoneNumber?: string | null; // Typically collected separately
   createdAt: Timestamp;
+  roles?: string[]; // Roles like 'user', 'admin'
   // other custom fields
 }
+
