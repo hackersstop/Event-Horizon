@@ -21,10 +21,18 @@ export function AppHeader() {
   };
 
   const renderAuthButtons = () => {
-    if (!mounted || loading) { // If not mounted OR auth is still loading
-      return <div className="w-32 h-9 bg-muted rounded-md animate-pulse"></div>;
+    if (!mounted) {
+      // Server render and initial client render: Show placeholder
+      return <div className="w-32 h-9 bg-muted rounded-md animate-pulse" key="auth-placeholder-initial"></div>;
     }
 
+    // Client render after mount
+    if (loading) {
+      // Mounted, but auth state is still loading: Show placeholder
+      return <div className="w-32 h-9 bg-muted rounded-md animate-pulse" key="auth-placeholder-loading"></div>;
+    }
+
+    // Mounted and auth state loaded
     if (user) {
       return (
         <div className="flex items-center gap-2">
@@ -82,21 +90,26 @@ export function AppHeader() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
       <div className="container mx-auto px-6 flex h-auto max-w-screen-2xl items-center justify-between py-6">
         <Link href="/" className="flex items-center space-x-2">
-          {/* Icon removed as per request */}
           <span className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
             {siteConfig.name}
           </span>
         </Link>
         
         <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
-          {(!mounted || loading) ? ( // If not mounted OR auth is still loading
-            // Placeholder for nav items
+          {!mounted ? (
+            // Server render and initial client render: Show placeholders
             <>
-              <div className="w-16 h-4 bg-muted rounded animate-pulse"></div>
-              <div className="w-20 h-4 bg-muted rounded animate-pulse"></div>
+              <div className="w-16 h-4 bg-muted rounded animate-pulse" key="nav-placeholder-1"></div>
+              <div className="w-20 h-4 bg-muted rounded animate-pulse" key="nav-placeholder-2"></div>
+            </>
+          ) : loading ? (
+            // Client render after mount, but auth state still loading: Show placeholders
+            <>
+              <div className="w-16 h-4 bg-muted rounded animate-pulse" key="nav-loading-placeholder-1"></div>
+              <div className="w-20 h-4 bg-muted rounded animate-pulse" key="nav-loading-placeholder-2"></div>
             </>
           ) : (
-            // Actual nav items; navItems calculation is safe here because isAdmin and user are stable
+            // Client render after mount and auth state loaded: Show actual nav items
             navItems.map((item) => {
               if (item.protected && !user) return null;
               if (item.admin && (!user || !isAdmin)) return null;
@@ -115,7 +128,6 @@ export function AppHeader() {
 
         <div className="flex items-center gap-x-2">
           {renderAuthButtons()}
-          {/* Placeholder for theme toggle if needed in future */}
         </div>
       </div>
     </header>
