@@ -81,7 +81,7 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
-      <div className="container flex h-auto max-w-screen-2xl items-center justify-between py-4"> {/* Adjusted py for more padding */}
+      <div className="container flex h-auto max-w-screen-2xl items-center justify-between py-6"> {/* Increased py from 4 to 6 */}
         <Link href="/" className="flex items-center space-x-2">
           {/* Icon removed as per request */}
           <span className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
@@ -113,3 +113,4 @@ export function AppHeader() {
     </header>
   );
 }
+
