@@ -13,6 +13,7 @@ import { collection, addDoc, serverTimestamp, updateDoc, doc, getDoc } from 'fir
 import { db } from '@/lib/firebase/config';
 import { generateDisplayTicketId } from '@/lib/ticketUtils';
 import { siteConfig } from '@/config/site';
+import { sendBookingConfirmationEmail } from '@/actions/sendBookingEmail'; // Import the server action
 
 declare global {
   interface Window {
@@ -81,10 +82,9 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
     fetchAdminConfig();
 
     return () => {
-      // Clean up script if component unmounts, though typically not strictly necessary for SDKs like this
       const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
-      if (existingScript) {
-        // document.body.removeChild(existingScript); // Optional: can cause issues if other components rely on it.
+      if (existingScript && existingScript.parentNode) {
+        // existingScript.parentNode.removeChild(existingScript); // Optional, consider implications
       }
     };
   }, [toast]);
@@ -119,39 +119,16 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
 
     const amountInPaisa = Math.round((event.offerAmount || event.amount) * 100);
 
-    // **STEP 1: Create Order ID (Server-Side Recommended)**
-    // In a real application, this step should be done on your server to keep your Key Secret secure.
-    // Your server would call Razorpay's Orders API and return the order_id.
-    // For this example, we'll simulate a client-side order ID generation (NOT SECURE FOR PRODUCTION).
-    // This is a placeholder for what should be a server-side call.
-    // const serverGeneratedOrderId = await createRazorpayOrderOnServer(amountInPaisa, 'INR');
-    // if (!serverGeneratedOrderId) {
-    //   setBookingState('error');
-    //   toast({ variant: 'destructive', title: 'Order Creation Failed', description: 'Could not initiate payment order.' });
-    //   return;
-    // }
-    // Since we can't make a server call here, we'll let Razorpay create an order implicitly during checkout.
-    // This is less ideal as you don't get an order_id beforehand to store or reconcile easily if payment is abandoned.
-    // For a robust solution, always create orders via your backend.
-
     const options = {
       key: razorpayKeyId,
       amount: amountInPaisa.toString(),
       currency: 'INR',
       name: siteConfig.name,
       description: `Ticket for ${event.title}`,
-      image: '/logo-placeholder.png', // Replace with your actual logo URL
-      // order_id: serverGeneratedOrderId, // Use if you create order on backend
+      image: '/logo-placeholder.png', 
       handler: async (response: any) => {
-        // **STEP 2: Verify Payment (Server-Side CRITICAL)**
-        // This step MUST be done on your server. Never trust client-side payment success.
-        // Send response.razorpay_payment_id, response.razorpay_order_id, response.razorpay_signature to your server.
-        // Your server will verify the signature using your Key Secret.
-        // const isPaymentVerified = await verifyPaymentOnServer(response);
-        // For this example, we'll assume payment is verified (NOT SECURE FOR PRODUCTION).
-        
         const paymentId = response.razorpay_payment_id;
-        const orderId = response.razorpay_order_id; // This will be available if Razorpay creates it
+        const orderId = response.razorpay_order_id; 
 
         try {
           const bookingDataForFirestore: Omit<Booking, 'id' | 'bookingDate' | 'qrCodeData' | 'displayTicketId'> & { qrCodeData?: string, displayTicketId?: string, userEmail?: string } = {
@@ -164,8 +141,6 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
             paymentStatus: 'completed',
             paymentId: paymentId,
             paymentCurrency: 'INR',
-            // Storing razorpay_order_id is good for reconciliation
-            // It would be named something like `razorpayOrderId: orderId`
             verified: false,
           };
 
@@ -181,7 +156,7 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
           await updateDoc(doc(db, 'bookings', actualBookingId), {
             qrCodeData: compositeQrCodeDataString,
             displayTicketId: displayId,
-            razorpayOrderId: orderId, // Store Razorpay's order ID
+            razorpayOrderId: orderId, 
           });
 
           const newBookingForDisplay: Booking = {
@@ -189,7 +164,7 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
             id: actualBookingId,
             displayTicketId: displayId,
             qrCodeData: compositeQrCodeDataString,
-            bookingDate: new Date() as any,
+            bookingDate: new Date() as any, // This will be a Timestamp from DB in profile
             userEmail: user.email || undefined,
           };
 
@@ -202,10 +177,19 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
             duration: 7000,
           });
 
+          // Send confirmation email
+          if (user.email) {
+            const emailResult = await sendBookingConfirmationEmail(newBookingForDisplay, event, user.email);
+            if (emailResult.success) {
+              toast({ title: "Email Sent", description: "A confirmation email has been sent (simulated)." });
+            } else {
+              toast({ variant: "destructive", title: "Email Failed", description: emailResult.message });
+            }
+          }
+
         } catch (dbError) {
           console.error("Booking failed after payment (DB error):", dbError);
           setBookingState('error');
-          // CRITICAL: Implement a reconciliation process for payments made but booking failed.
           toast({
             variant: "destructive",
             title: "Booking Record Failed",
@@ -217,7 +201,6 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
       prefill: {
         name: user.displayName || '',
         email: user.email || '',
-        // contact: user.phoneNumber || '' // If you collect phone number
       },
       notes: {
         eventId: event.id,
@@ -225,11 +208,11 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
         eventTitle: event.title,
       },
       theme: {
-        color: getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#3399cc' // Use primary color from CSS vars
+        color: getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#3399cc'
       },
       modal: {
         ondismiss: () => {
-          if (bookingState !== 'booked') { // Avoid changing state if already booked
+          if (bookingState !== 'booked') { 
             setBookingState('idle');
             toast({
               title: 'Payment Cancelled',
@@ -329,29 +312,3 @@ export function EventBookingClient({ event }: EventBookingClientProps) {
     </div>
   );
 }
-
-// Helper function placeholders for server-side logic (would be in /pages/api or Firebase Functions)
-// async function createRazorpayOrderOnServer(amount: number, currency: string): Promise<string | null> {
-//   // const response = await fetch('/api/razorpay/create-order', {
-//   //   method: 'POST',
-//   //   headers: { 'Content-Type': 'application/json' },
-//   //   body: JSON.stringify({ amount, currency }),
-//   // });
-//   // if (!response.ok) return null;
-//   // const data = await response.json();
-//   // return data.orderId;
-//   console.warn("Order creation should be server-side. This is a client-side placeholder.");
-//   return `sim_order_${Date.now()}`; // Simulated order_id
-// }
-
-// async function verifyPaymentOnServer(paymentData: { razorpay_payment_id: string, razorpay_order_id: string, razorpay_signature: string }): Promise<boolean> {
-//   // const response = await fetch('/api/razorpay/verify-payment', {
-//   //   method: 'POST',
-//   //   headers: { 'Content-Type': 'application/json' },
-//   //   body: JSON.stringify(paymentData),
-//   // });
-//   // return response.ok;
-//    console.warn("Payment verification should be server-side. This is a client-side placeholder.");
-//   return true; // Simulated verification
-// }
-

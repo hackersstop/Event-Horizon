@@ -164,7 +164,7 @@ export default function ProfilePage() {
                           qrDataToEncode={booking.id} // This is the actual Firestore booking ID for QR
                           displayTicketId={booking.displayTicketId}
                           eventTitle={booking.eventTitle}
-                          verifiableId={booking.id} // Display the full verifiable ID
+                          verifiableId={booking.id} // Display the full verifiable ID (which is the booking.id)
                        />
                     </div>
                   </CardContent>

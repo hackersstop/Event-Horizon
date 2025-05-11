@@ -84,7 +84,7 @@ const EnhancedQrCodePlaceholderIcon = ({ dataHint }: { dataHint: string }) => (
      <rect x="15" y="25" width="3" height="5" fill="currentColor" />
      <rect x="25" y="15" width="5" height="3" fill="currentColor" />
      <rect x="22" y="30" width="6" height="2" fill="currentColor" />
-     <rect x="30" y_coordinate="22" width_attribute="2" height_attribute="6" fill="currentColor" />
+     <rect x="30" y="22" width="2" height="6" fill="currentColor" /> {/* Corrected y_coordinate, width_attribute, height_attribute */}
   </svg>
 );
 
@@ -101,7 +101,7 @@ export function QRCodeDisplay({ qrDataToEncode, displayTicketId, eventTitle, ver
         title={`QR Code for Verifiable ID: ${verifiableId}`}
       >
         {qrDataToEncode ? (
-          <EnhancedQrCodePlaceholderIcon dataHint={verifiableId} />
+          <EnhancedQrCodePlaceholderIcon dataHint={qrDataToEncode} /> {/* Changed dataHint to qrDataToEncode */}
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground text-center">
             QR Data Missing

@@ -39,7 +39,7 @@ export default function RootLayout({
         <AuthProvider>
           <div className="flex flex-col min-h-screen">
             <AppHeader />
-            <main className="flex-grow container mx-auto px-4 py-8">
+            <main className="flex-grow container mx-auto px-6 py-8"> {/* Increased px from 4 to 6 */}
               {children}
             </main>
             <AppFooter />
